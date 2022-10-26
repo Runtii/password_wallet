@@ -10,7 +10,7 @@ function App() {
   const [userID, setUserID] = useState();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isHashed, setIsHashed] = useState("");
+  const [isHashed, setIsHashed] = useState(null);
 
   const [storedPassword, setStoredPassword] = useState("");
   const [desc, setDesc] = useState("");
@@ -18,6 +18,11 @@ function App() {
 
   const [passwordListBefore, setPasswordListBefore] = useState([]);
   const [passwordList, setPasswordList] = useState([]);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [passwordToChange, setPasswordToChange] = useState("");
+  const [isHashedNew, setIsHashedNew] = useState(null);
+  const [changePasswordState, setchangePasswordState] = useState("");
 
   const [ErrorMessage, setErrorMessage] = useState("");
 
@@ -76,7 +81,7 @@ function App() {
     if (loggedInState == true)
       Axios.post("http://localhost:3001/getpasswords", {
         userID: userID,
-        masterPassword: password,
+        password: password,
       }).then((response) => {
         if (response.data != "Error") {
           setPasswordList(response.data);
@@ -88,7 +93,16 @@ function App() {
   function refreshPage() {
     setPasswordList(passwordListBefore);
   }
-
+  const changePassword = () => {
+    Axios.post("http://localhost:3001/changePassword", {
+      userID: userID,
+      currentPassword: currentPassword,
+      passwordToChange: passwordToChange,
+      isHashedNew: isHashedNew,
+    }).then((response) => {
+      setchangePasswordState(response.data.response);
+    });
+  };
   const Logout = () => {
     setLoginPage(true);
     setRegisterPage(false);
@@ -110,6 +124,15 @@ function App() {
     setLoginPage(false);
     setRegisterPage(false);
     setLoggedInPage(true);
+  };
+
+  const handleChange = (e) => {
+    if (e.target.value) setIsHashedNew("isHashed");
+    else setIsHashedNew(null);
+  };
+  const handleChangeREG = (e) => {
+    if (e.target.value) setIsHashedNew("isHashed");
+    else setIsHashedNew(null);
   };
 
   //logowanie
@@ -171,8 +194,13 @@ function App() {
               id="isHashed"
               name="isHashed"
               value="isHashed"
-              onChange={(event) => {
-                setIsHashed(event.target.value);
+              onChange={(e) => {
+                handleChangeREG({
+                  target: {
+                    name: e.target.name,
+                    value: e.target.checked,
+                  },
+                });
               }}
             />
             <label htmlFor="isHashed">
@@ -223,42 +251,92 @@ function App() {
           </button>
         </div>
         <br></br>
-        <table className="Content">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Strona</th>
-              <th>Hasło</th>
-              <th>Opis</th>
-            </tr>
-          </thead>
+        <div className="Content">
+          <table>
+            <thead>
+              <tr>
+                <th>Strona</th>
+                <th>Hasło</th>
+                <th>Opis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {passwordList.map((val, key) => {
+                return (
+                  <tr key={key}>
+                    <td>{val.web_address}</td>
+                    <td
+                      onClick={() => {
+                        decrypt({
+                          web_address: val.web_address,
+                          storedPassword: val.password,
+                          description: val.description,
+                        });
+                      }}
+                    >
+                      {val.password}
+                    </td>
+                    <td>{val.description ? val.description : "Brak danych"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
-          {passwordList.map((val, key) => {
-            return (
-              <tbody key={key}>
-                <tr>
-                  <td>{val.ID}</td>
-                  <td>{val.web_address}</td>
-                  <td
-                    onClick={() => {
-                      decrypt({
-                        ID: val.ID,
-                        web_address: val.web_address,
-                        storedPassword: val.password,
-                        description: val.description,
-                      });
-                    }}
-                  >
-                    {val.password}
-                  </td>
-                  <td>{val.description ? val.description : "Brak danych"}</td>
-                </tr>
-              </tbody>
-            );
-          })}
-        </table>
-        <button onClick={() => refreshPage()}>Przywróć szyfrowanie</button>
-        <br></br>
+          <button onClick={() => refreshPage()}>Przywróć szyfrowanie</button>
+        </div>
+        <br />
+        <div className="Content">
+          <input
+            type="text"
+            id="currentPassword"
+            name="currentPassword"
+            placeholder="Aktualne hasło"
+            onChange={(event) => {
+              setCurrentPassword(event.target.value);
+            }}
+          ></input>
+          <input
+            type="text"
+            id="newPassword"
+            name="newPassword"
+            placeholder="Nowe hasło"
+            onChange={(event) => {
+              setPasswordToChange(event.target.value);
+            }}
+          ></input>
+          <div className="hash">
+            <input
+              type="checkbox"
+              id="isHashed"
+              name="isHashed"
+              value="isHashed"
+              onChange={(e) => {
+                handleChange({
+                  target: {
+                    name: e.target.name,
+                    value: e.target.checked,
+                  },
+                });
+              }}
+            />
+            <label htmlFor="isHashed">
+              Czy hasło ma być z solą w formie sha512?
+            </label>
+          </div>
+
+          <button onClick={() => changePassword()} name="changePassword">
+            Zmień hasło
+          </button>
+          <label
+            for="changePassword"
+            id="changePasswordLabel"
+            name="changePasswordLabe"
+          >
+            {changePasswordState}
+          </label>
+        </div>
+        <br />
         <div className="Content">
           <button onClick={() => Logout()}>Wyloguj</button>
         </div>

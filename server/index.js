@@ -37,19 +37,16 @@ app.post("/addpassword", (req, res) => {
   }
 });
 
-//TODO
 app.post("/getpasswords", (req, res) => {
-  const { userID, masterPassword } = req.body;
+  const { userID, password } = req.body;
   db.query(
     "SELECT password,salt,isPasswordHashed FROM users where ID = ?",
     [userID],
     (err, result1) => {
       if (err) {
-        res.send({ err: "Error" });
+        res.send({ response: "Error" });
       } else if (result1[0].isPasswordHashed == 1) {
-        if (
-          !validateSHA(masterPassword, result1[0].salt, result1[0].password)
-        ) {
+        if (!validateSHA(password, result1[0].salt, result1[0].password)) {
           res.send("Error");
         } else {
           db.query(
@@ -57,7 +54,7 @@ app.post("/getpasswords", (req, res) => {
             [userID],
             (err, result2) => {
               if (err) {
-                res.send({ err: "Error" });
+                res.send({ response: "Error" });
               } else {
                 res.send(result2);
               }
@@ -65,9 +62,7 @@ app.post("/getpasswords", (req, res) => {
           );
         }
       } else {
-        if (
-          toString(result1[0].password) != toString(encryptHMAC(masterPassword))
-        ) {
+        if (toString(result1[0].password) != toString(encryptHMAC(password))) {
           res.send({ err: "Error" });
         } else {
           db.query(
@@ -91,6 +86,77 @@ app.post("/decrypt", (req, res) => {
   res.send(decrypt(req.body.password));
 });
 
+app.post("/changePassword", (req, res) => {
+  const { userID, currentPassword, passwordToChange, isHashedNew } = req.body;
+  db.query(
+    "SELECT password,salt,isPasswordHashed FROM users where ID = ?",
+    [userID],
+    (err, result) => {
+      if (err) {
+        res.send({ response: "ERROR" });
+      } else if (result[0].isPasswordHashed != null) {
+        if (!validateSHA(currentPassword, result[0].salt, result[0].password)) {
+          res.send({ response: "ERROR" });
+        } else {
+          if (isHashedNew === "isHashed") {
+            result = encryptSHA(passwordToChange);
+            const encrypted = result.password;
+            const salt = result.salt;
+            db.query(
+              "Update users SET password = ?, salt = ? , isPasswordHashed = ? where ID = ?;",
+              [encrypted, salt, 1, userID],
+              (err, result) => {
+                if (err) res.send({ response: "ERROR" });
+                else res.send({ response: "PASSWORD CHANGED" });
+              }
+            );
+          } else {
+            const encrypted = encryptHMAC(passwordToChange);
+            db.query(
+              "Update users SET password = ?, salt = ? , isPasswordHashed = ? where ID = ?;",
+              [encrypted, null, null, userID],
+              (err, result) => {
+                if (err) res.send({ response: "ERROR" });
+                else res.send({ response: "PASSWORD CHANGED" });
+              }
+            );
+          }
+        }
+      } else {
+        const encrypted = encryptHMAC(passwordToChange);
+        if (toString(result[0].password) != toString(encryptHMAC(encrypted))) {
+          res.send({ err: "Error" });
+        } else {
+          if (isHashedNew === "isHashed") {
+            result = encryptSHA(passwordToChange);
+            const encrypted = result.password;
+            const salt = result.salt;
+            db.query(
+              "Update users SET password = ?, salt = ? , isPasswordHashed = ? where ID = ?;",
+              [encrypted, salt, 1, userID],
+              (err, result) => {
+                if (err) res.send({ response: "ERROR" });
+                else res.send({ response: "PASSWORD CHANGED" });
+              }
+            );
+          } else {
+            const encrypted = encryptHMAC(passwordToChange);
+            db.query(
+              "Update users SET password = ?, salt = ? , isPasswordHashed = ? where ID = ?;",
+              [encrypted, null, null, userID],
+              (err, result) => {
+                if (err) {
+                  res.send({ response: "ERROR" });
+                } else res.send({ response: "PASSWORD CHANGED" });
+              }
+            );
+          }
+        }
+      }
+    }
+  );
+});
+
 app.post("/register", (req, res) => {
   const { username, password, isHashed } = req.body;
 
@@ -103,7 +169,7 @@ app.post("/register", (req, res) => {
       "INSERT INTO users (username,password,salt,isPasswordHashed) VALUES (?,?,?,?)",
       [username, encrypted, salt, 1],
       (err, result) => {
-        if (err) console.log(err);
+        if (err) res.send({ response: "ERROR" });
         else res.send({ response: "REGISTERED" });
       }
     );
@@ -113,7 +179,7 @@ app.post("/register", (req, res) => {
       "INSERT INTO users (username,password) VALUES (?,?)",
       [username, encrypted],
       (err, result) => {
-        if (err) console.log(err);
+        if (err) res.send({ response: "ERROR" });
         else res.send({ response: "REGISTERED" });
       }
     );
