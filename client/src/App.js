@@ -36,7 +36,7 @@ function App() {
         setErrorMessage("");
         AUTH();
       } else {
-        setErrorMessage(response.data.response);
+        setErrorMessage(response.data.err);
       }
     });
   };
@@ -268,6 +268,7 @@ function App() {
                     <td
                       onClick={() => {
                         decrypt({
+                          ID: val.ID,
                           web_address: val.web_address,
                           storedPassword: val.password,
                           description: val.description,

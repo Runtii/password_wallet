@@ -31,7 +31,7 @@ app.post("/addpassword", (req, res) => {
       "INSERT INTO password (password,id_user,web_address,description) VALUES (?,?,?,?)",
       [hashedpassword, userID, webAddress, desc],
       (err, result) => {
-        console.log("addpassword " + err);
+        res.send({ err: "ERROR" });
       }
     );
   }
