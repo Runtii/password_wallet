@@ -1,4 +1,5 @@
 const encryption = require("./EncryptionHandler");
+const API = require("./index");
 
 test("Testing SHA encryption", () => {
   test = "test";
