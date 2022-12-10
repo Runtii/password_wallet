@@ -11,7 +11,7 @@ const {
   getUserCredentialsByID,
   getUserCredentialsByUsername,
   insertNewUser,
-} = require("./queries"); //import do ewentualnego poczyszczenia kodu
+} = require("./queries");
 
 //import all functions for encryption, decryption and validation
 const {
@@ -37,7 +37,7 @@ const validatePassword = (password, hash, salt) => {
   }
 };
 
-//adds password to DB (via function with db querry inside)
+//adds password to DB (via function with db query inside)
 //request input: new password, id of the user, web address of the given password, optional description
 //returns result of operation (object with message)
 app.post("/addpassword", (req, res) => {
@@ -61,9 +61,9 @@ app.post("/addpassword", (req, res) => {
 app.post("/getpasswords", (req, res) => {
   const { userID, password } = req.body;
   getUserCredentialsByID(userID, function (credentials) {
-    if (credentials.response) res.send({ response: "ERROR" });
-
-    if (validatePassword(password, credentials.password, credentials.salt))
+    if (
+      validatePassword(password, credentials[0].password, credentials[0].salt)
+    )
       getPasswords(userID, function (resultOfGetPassword) {
         res.send(resultOfGetPassword);
       });
@@ -136,14 +136,12 @@ app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
   getUserCredentialsByUsername(username, function (credentials) {
-    if (credentials.response) res.send(credentials.response);
-
     if (
-      !validatePassword(password, credentials[0].password, credentials[0].salt)
+      validatePassword(password, credentials[0].password, credentials[0].salt)
     ) {
-      res.send({ response: "Podano złe dane" });
-    } else {
       res.send({ response: "AUTH", ID: credentials[0].ID });
+    } else {
+      res.send({ response: "Podano złe dane" });
     }
   });
 });

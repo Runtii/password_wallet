@@ -22,7 +22,7 @@ function App() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [passwordToChange, setPasswordToChange] = useState("");
   const [isHashedNew, setIsHashedNew] = useState(null);
-  const [changePasswordState, setchangePasswordState] = useState("");
+  const [changePasswordState, setChangePasswordState] = useState("");
 
   const [ErrorMessage, setErrorMessage] = useState("");
 
@@ -78,7 +78,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (loggedInState === true)
+    if (loggedInState === true) {
       Axios.post("http://localhost:3001/getpasswords", {
         userID: userID,
         password: password,
@@ -88,6 +88,7 @@ function App() {
           setPasswordListBefore(response.data);
         }
       });
+    }
   }, [loggedInState, userID, password]);
 
   function refreshPasswords() {
@@ -100,7 +101,7 @@ function App() {
       passwordToChange: passwordToChange,
       isHashedNew: isHashedNew,
     }).then((response) => {
-      setchangePasswordState(response.data.response);
+      setChangePasswordState(response.data.response);
     });
   };
   const Logout = () => {
@@ -135,7 +136,7 @@ function App() {
     else setIsHashedNew(null);
   };
 
-  //logowanie
+  //login
   if (loginPage === true)
     return (
       <div className="App">
@@ -167,7 +168,7 @@ function App() {
         </div>
       </div>
     );
-  //rejestracja
+  //register
   else if (registerPage === true)
     return (
       <div className="App">
@@ -215,7 +216,7 @@ function App() {
         </div>
       </div>
     );
-  //zalogowany user
+  //logged in user
   else if (loggedInState === true) {
     return (
       <div className="App">

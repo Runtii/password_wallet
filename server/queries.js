@@ -16,15 +16,15 @@ const addPassword = (hashedPassword, userID, webAddress, desc, callback) => {
     "INSERT INTO password (password,id_user,web_address,description) VALUES (?,?,?,?)",
     [hashedPassword, userID, webAddress, desc],
     (err, result) => {
-      return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" });
+      else return callback({ response: "PASSWORD ADDED" });
     }
   );
-  return callback({ response: "PASSWORD ADDED" });
 };
 
 //query to update user
 //input encrypted password, salt, boolean that states if the password is hashed, user id and callback function
-//returns object with reponse if user was updated as callback function
+//returns object with response if user was updated as callback function
 const updateUser = (encrypted, salt, isPasswordHashed, userID, callback) => {
   db.query(
     "Update users SET password = ?, salt = ? , isPasswordHashed = ? where ID = ?;",
@@ -36,18 +36,18 @@ const updateUser = (encrypted, salt, isPasswordHashed, userID, callback) => {
   );
 };
 
-//querry to get passwords that was saved by user
+//query to get passwords that was saved by user
 //input user id and callback function
 //returns object with passwords or object with message about failure
 const getPasswords = (userID, callback) => {
   db.query(
     "SELECT ID,password,web_address,description FROM password where id_user = ?",
     [userID],
-    (err, result2) => {
+    (err, result) => {
       if (err) {
         return callback({ response: "ERROR" });
       } else {
-        return callback(result2);
+        return callback(result);
       }
     }
   );

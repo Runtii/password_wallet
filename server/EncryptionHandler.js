@@ -34,7 +34,7 @@ const encryptHMAC = (password) => {
 //input password and hashed with HMAC password
 //output boolean
 const validateHMAC = (password, hash) => {
-  return toString(hash) === toString(encryptHMAC(password));
+  return hash === encryptHMAC(password);
 };
 
 //function for passwords encryption wit aes-256-cbc method
