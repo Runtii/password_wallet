@@ -36,7 +36,7 @@ function App() {
         setErrorMessage("");
         AUTH();
       } else {
-        setErrorMessage(response.data.err);
+        setErrorMessage(response.data.response);
       }
     });
   };
@@ -90,7 +90,7 @@ function App() {
       });
   }, [userID, password]);
 
-  function refreshPage() {
+  function refreshPasswords() {
     setPasswordList(passwordListBefore);
   }
   const changePassword = () => {
@@ -284,7 +284,9 @@ function App() {
             </tbody>
           </table>
 
-          <button onClick={() => refreshPage()}>Przywróć szyfrowanie</button>
+          <button onClick={() => refreshPasswords()}>
+            Przywróć szyfrowanie
+          </button>
         </div>
         <br />
         <div className="Content">
