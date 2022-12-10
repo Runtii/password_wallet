@@ -80,7 +80,7 @@ const getUserCredentialsByUsername = (username, callback) => {
       if (result === undefined) {
         return callback({ response: "Podano złe dane" });
       } else {
-        return callback(resultz);
+        return callback(result);
       }
     }
   );

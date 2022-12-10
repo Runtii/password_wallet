@@ -31,7 +31,7 @@ function App() {
       username: username,
       password: password,
     }).then((response) => {
-      if (response.data.response == "AUTH") {
+      if (response.data.response === "AUTH") {
         setUserID(response.data.ID);
         setErrorMessage("");
         AUTH();
@@ -78,17 +78,17 @@ function App() {
   };
 
   useEffect(() => {
-    if (loggedInState == true)
+    if (loggedInState === true)
       Axios.post("http://localhost:3001/getpasswords", {
         userID: userID,
         password: password,
       }).then((response) => {
-        if (response.data != "Error") {
+        if (response.data !== "Error") {
           setPasswordList(response.data);
           setPasswordListBefore(response.data);
         }
       });
-  }, [userID, password]);
+  }, [loggedInState, userID, password]);
 
   function refreshPasswords() {
     setPasswordList(passwordListBefore);
@@ -160,7 +160,9 @@ function App() {
           />
 
           <button onClick={login_}>Zaloguj</button>
-          <a onClick={goToRegister}> Przejdź do strony zakładania konta</a>
+          <button onClick={goToRegister}>
+            Przejdź do strony zakładania konta
+          </button>
           <div className="ERRORBOX">{ErrorMessage}</div>
         </div>
       </div>
@@ -209,7 +211,7 @@ function App() {
           </div>
 
           <button onClick={register}>Zarejestruj</button>
-          <a onClick={goToLogin}> Przejdź do strony logowania</a>
+          <button onClick={goToLogin}> Przejdź do strony logowania</button>
         </div>
       </div>
     );
