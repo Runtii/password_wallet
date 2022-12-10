@@ -8,9 +8,9 @@ const {
   addPassword,
   updateUser,
   getPasswords,
-  getUserCredentials,
+  getUserCredentialsByID,
+  getUserCredentialsByUsername,
   insertNewUser,
-  login,
 } = require("./queries"); //import do ewentualnego poczyszczenia kodu
 
 //import all functions for encryption, decryption and validation
@@ -60,7 +60,7 @@ app.post("/addpassword", (req, res) => {
 //returns object with response as string message
 app.post("/getpasswords", (req, res) => {
   const { userID, password } = req.body;
-  getUserCredentials(userID, function (credentials) {
+  getUserCredentialsByID(userID, function (credentials) {
     if (credentials.response) res.send({ response: "ERROR" });
 
     if (validatePassword(password, credentials.password, credentials.salt))
@@ -83,7 +83,7 @@ app.post("/decrypt", (req, res) => {
 //returns response as object with string message
 app.post("/changePassword", (req, res) => {
   const { userID, currentPassword, passwordToChange, isHashedNew } = req.body;
-  getUserCredentials(userID, function (credentials) {
+  getUserCredentialsByID(userID, function (credentials) {
     if (credentials.response) res.send(credentials.response);
 
     if (
@@ -135,7 +135,7 @@ app.post("/login", (req, res) => {
   console.log(ipAddress);
   const { username, password } = req.body;
 
-  login(username, password, function (credentials) {
+  getUserCredentialsByUsername(username, function (credentials) {
     if (credentials.response) res.send(credentials.response);
 
     if (

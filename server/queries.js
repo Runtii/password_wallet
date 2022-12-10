@@ -53,7 +53,10 @@ const getPasswords = (userID, callback) => {
   );
 };
 
-const getUserCredentials = (userID, callback) => {
+//returns user credentials for validation, search by ID
+//input user id
+//output credentials
+const getUserCredentialsByID = (userID, callback) => {
   db.query(
     "SELECT password,salt,isPasswordHashed FROM users where ID = ?",
     [userID],
@@ -66,7 +69,26 @@ const getUserCredentials = (userID, callback) => {
     }
   );
 };
+//returns user credentials for validation, search by username
+//input username
+//output credentials
+const getUserCredentialsByUsername = (username, callback) => {
+  db.query(
+    "SELECT ID,password,salt,isPasswordHashed FROM users where username = ?",
+    [username],
+    (req, result) => {
+      if (result === undefined) {
+        return callback({ response: "Podano złe dane" });
+      } else {
+        return callback(resultz);
+      }
+    }
+  );
+};
 
+//inserts new user into DB
+//input username, hash of password and flag if password is hashed
+//output response message as object
 const insertNewUser = (username, hash, salt, isPasswordHashed, callback) => {
   db.query(
     "INSERT INTO users (username,password,salt,isPasswordHashed) VALUES (?,?,?,?)",
@@ -78,25 +100,11 @@ const insertNewUser = (username, hash, salt, isPasswordHashed, callback) => {
   );
 };
 
-const login = (username, password, callback) => {
-  db.query(
-    "SELECT ID,password,salt,isPasswordHashed FROM users where username = ?",
-    [username],
-    (req, result) => {
-      if (result === undefined) {
-        return callback({ response: "Podano złe dane" });
-      } else {
-        return callback(result);
-      }
-    }
-  );
-};
-
 module.exports = {
   addPassword,
   updateUser,
   getPasswords,
-  getUserCredentials,
+  getUserCredentialsByID,
+  getUserCredentialsByUsername,
   insertNewUser,
-  login,
 };
