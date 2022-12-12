@@ -1,5 +1,6 @@
 module.exports = async () => {
-  process.env.TZ = "EST";
+  process.env.TZ = "CET";
+
   return {
     verbose: true,
   };

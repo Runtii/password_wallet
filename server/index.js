@@ -12,6 +12,10 @@ const {
   getUserCredentialsByUsername,
   insertNewUser,
   insertNewLoginAttempt,
+  getLoginAttempts,
+  setUserTimeoutDB,
+  checkUserTimeoutDB,
+  removePermBan,
 } = require("./queries");
 
 //import all functions for encryption, decryption and validation
@@ -72,6 +76,23 @@ app.post("/getPasswords", (req, res) => {
   });
 });
 
+app.post("/getLoginAttempts", (req, res) => {
+  const { userID, numberOfAttempts, password } = req.body;
+  getUserCredentialsByID(userID, function (credentials) {
+    if (
+      validatePassword(password, credentials[0].password, credentials[0].salt)
+    )
+      getLoginAttempts(
+        userID,
+        numberOfAttempts,
+        function (resultOfGetPassword) {
+          res.send(resultOfGetPassword);
+        }
+      );
+    else res.send({ response: "ERROR" });
+  });
+});
+
 //encrypts password that is needed for addPassword validation
 //input plain text password
 //returns encrypted password
@@ -126,14 +147,28 @@ app.post("/register", (req, res) => {
     result = encryptSHA(password);
     const encrypted = result.password;
     const salt = result.salt;
-    insertNewUser(username, encrypted, salt, 1, function (newUserStatus) {
-      if (newUserStatus.response) res.send(newUserStatus.response);
-    });
+    insertNewUser(
+      username,
+      encrypted,
+      salt,
+      1,
+      getDateTime(),
+      function (newUserStatus) {
+        if (newUserStatus.response) res.send(newUserStatus.response);
+      }
+    );
   } else {
     const encrypted = encryptHMAC(password);
-    insertNewUser(username, encrypted, null, null, function (newUserStatus) {
-      if (newUserStatus.response) res.send(newUserStatus.response);
-    });
+    insertNewUser(
+      username,
+      encrypted,
+      null,
+      null,
+      getDateTime(),
+      function (newUserStatus) {
+        if (newUserStatus.response) res.send(newUserStatus.response);
+      }
+    );
   }
 });
 
@@ -144,37 +179,106 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   const ipAddress = req.socket.remoteAddress;
   const { username, password } = req.body;
-
   getUserCredentialsByUsername(username, function (credentials) {
     let status = "";
     if (credentials[0] === undefined) res.send({ response: "Podano złe dane" });
     else {
-      if (
-        validatePassword(password, credentials[0].password, credentials[0].salt)
-      ) {
-        status = "Pomyślne logowanie";
-        res.send({ response: "AUTH", ID: credentials[0].ID });
-      } else {
-        status = "Nieudana próba logowania";
-        res.send({ response: "Podano złe dane" });
-      }
-
-      saveAttempt(
-        credentials[0].ID,
-        ipAddress,
-        getDateTime(),
-        status,
-        function (callback) {}
-      );
+      UserTimeout(credentials[0].ID, function (TimeoutResult) {
+        console.log(TimeoutResult);
+        const isTimeout = TimeoutResult.isTimeout;
+        const Timeout = TimeoutResult.Timeout;
+        if (isTimeout === false) {
+          if (
+            validatePassword(
+              password,
+              credentials[0].password,
+              credentials[0].salt
+            )
+          ) {
+            status = "Pomyślne logowanie";
+            res.send({ response: "AUTH", ID: credentials[0].ID });
+          } else {
+            status = "Nieudana próba logowania";
+            res.send({ response: "Podano złe dane" });
+          }
+          saveAttempt(
+            credentials[0].ID,
+            ipAddress,
+            getDateTime(),
+            status,
+            function (callback) {}
+          );
+        } else {
+          res.send({
+            response: "Masz zablokowaną możliwość logowania do " + Timeout,
+          });
+        }
+      });
     }
   });
 });
 
 //saves login attempt into DB
-//returns status (not used but for testing)
+//returns status (only for testing)
 const saveAttempt = (ID, ipAddress, DateTime, status, callbackATT) => {
   insertNewLoginAttempt(ID, ipAddress, DateTime, status, function (callback) {
     callbackATT(callback.response);
+  });
+};
+
+const setUserTimeout = (IDUser, ERRORS) => {
+  let Timeout = new Date(getDateTime());
+  let isTimeout = false;
+  switch (ERRORS) {
+    case 0:
+    case 1:
+      break;
+    case 2:
+      Timeout.setSeconds(Timeout.getSeconds() + 5);
+      setUserTimeoutDB(IDUser, Timeout, function (callback) {});
+      isTimeout = true;
+      break;
+    case 3:
+      Timeout.setSeconds(Timeout.getSeconds() + 10);
+      setUserTimeoutDB(IDUser, Timeout, function (callback) {});
+      isTimeout = true;
+      break;
+    case 4:
+      Timeout.setSeconds(Timeout.getSeconds() + 120);
+      setUserTimeoutDB(IDUser, Timeout, function (callback) {});
+      isTimeout = true;
+      break;
+    case 5:
+      Timeout = "9999-12-31 23:59:59";
+      setUserTimeoutDB(IDUser, Timeout, function (callback) {});
+      isTimeout = true;
+      break;
+    default:
+      break;
+  }
+  return { isTimeout: isTimeout, Timeout: Timeout };
+};
+
+const UserTimeout = (IDUser, userCallback) => {
+  getLoginAttempts(IDUser, 5, function (callback) {
+    const currentDateTime = getDateTime();
+    checkUserTimeoutDB(IDUser, function (Timeout) {
+      if (new Date(currentDateTime) < new Date(Timeout))
+        return userCallback({ isTimeout: true, Timeout: Timeout });
+      let ERRORS = 0;
+      if (Timeout === undefined)
+        setUserTimeoutDB(IDUser, currentDateTime, function (callback) {});
+      else {
+        for (e in callback) {
+          if (callback[e].Status === "Nieudana próba logowania") {
+            ERRORS += 1;
+          } else {
+            break;
+          }
+        }
+      }
+      return userCallback(setUserTimeout(IDUser, ERRORS));
+    });
   });
 };
 
@@ -182,17 +286,19 @@ const saveAttempt = (ID, ipAddress, DateTime, status, callbackATT) => {
 const getDateTime = () => {
   let currentDate = new Date();
   return (
+    currentDate.getFullYear() +
+    "-" +
+    (currentDate.getMonth() + 1 < 10
+      ? "0" + (currentDate.getMonth() + 1)
+      : currentDate.getMonth() + 1) +
+    "-" +
     (currentDate.getDate() < 10
       ? "0" + currentDate.getDate()
       : currentDate.getDate()) +
-    "/" +
-    (currentDate.getMonth() + 1 < 10
-      ? "0" + (currentDate.getDate() + 1)
-      : currentDate.getDate() + 1) +
-    "/" +
-    currentDate.getFullYear() +
-    "@" +
-    currentDate.getHours() +
+    " " +
+    (currentDate.getHours() < 10
+      ? "0" + currentDate.getHours()
+      : currentDate.getHours()) +
     ":" +
     (currentDate.getMinutes() < 10
       ? "0" + currentDate.getMinutes()

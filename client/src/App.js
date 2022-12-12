@@ -17,13 +17,19 @@ function App() {
   const [webAddress, setAddress] = useState("");
 
   const [passwordListBefore, setPasswordListBefore] = useState([]);
-  const [passwordList, setPasswordList] = useState([]);
+  const [passwordList, setPasswordList] = useState([
+    {
+      web_address: "BRAK DANYCH",
+      storedPassword: "BRAK DANYCH",
+      description: "BRAK DANYCH",
+    },
+  ]);
 
   const [loginList, setLoginList] = useState([
     {
-      IP: "192.164.10.11",
-      DATETIME: "12.12.2022, 12:22:12",
-      STATUS: "Nieudane logowanie",
+      IP: "BRAK DANYCH",
+      DATETIME: "BRAK DANYCH",
+      STATUS: "BRAK DANYCH",
     },
   ]);
 
@@ -152,9 +158,20 @@ function App() {
       userID: userID,
       password: password,
     }).then((response) => {
-      if (response.data !== "Error") {
+      if (response.data !== "") {
         setPasswordList(response.data);
         setPasswordListBefore(response.data);
+      }
+    });
+  };
+  const getLoginAttemptsFromDB = () => {
+    Axios.post("http://localhost:3001/getLoginAttempts", {
+      userID: userID,
+      numberOfAttempts: 10,
+      password: password,
+    }).then((response) => {
+      if (response.data !== "") {
+        setLoginList(response.data);
       }
     });
   };
@@ -165,6 +182,7 @@ function App() {
     setAddPasswordMessage("");
     if (loggedInState === true) {
       getPasswordsFromDB();
+      getLoginAttemptsFromDB();
     }
   }, [loggedInState, userID, password]);
 
@@ -408,8 +426,8 @@ function App() {
                 return (
                   <tr key={key}>
                     <td>{val.IP}</td>
-                    <td>{val.DATETIME}</td>
-                    <td>{val.STATUS}</td>
+                    <td>{val.DateTime}</td>
+                    <td>{val.Status}</td>
                     <th>
                       <button id="usun" onClick={deleteFromDB(val.ID)}>
                         Usuń
