@@ -35,6 +35,9 @@ function App() {
 
   const [ErrorMessage, setErrorMessage] = useState("");
 
+  //makes request to log in user
+  //sends username and master password given by user
+  //after receiving "AUTH" response gives access to user panel with ID given by API
   const login_ = () => {
     Axios.post("http://localhost:3001/login", {
       username: username,
@@ -50,6 +53,9 @@ function App() {
     });
   };
 
+  //registers new user
+  //sends request with username, master password and flag that states if password is hashed
+  //does not return anything
   const register = () => {
     Axios.post("http://localhost:3001/register", {
       username: username,
@@ -58,6 +64,10 @@ function App() {
     });
   };
 
+  //sends request to API to handle decryption of password that was asked to decrypt by user inside user panel
+  //function handles decryption of passwords that user stores inside password wallet NOT master password
+  //input hash of password to be decrypted
+  //returns object with all the data same as earlier except from password which is decrypted
   const decrypt = (encryption) => {
     Axios.post("http://localhost:3001/decrypt", {
       password: encryption.storedPassword,
@@ -76,8 +86,21 @@ function App() {
       );
     });
   };
-  const deleteFromDB = (ID) => {};
-  const deletePasswordDB = (ID) => {};
+
+  //function handles requests to API to delete instance of login attempt
+  //input ID of login attempt that user wants to delete
+  //outputs response message and eventual error
+  const deleteFromDB = (IDOfLoginAttempt) => {};
+
+  //function handles requests to API to delete instance of password stored inside password wallet
+  //input ID of password that user wants to delete
+  //outputs response message and eventual error
+  const deletePasswordDB = (IDOfPassword) => {};
+
+  //function handles request to add new password to be stored inside password wallet
+  //right now it is also checking if password already exist
+  //at the end of execution it also refreshes password list to display new password
+  //TODO make refactor coz it can be split into smaller functions
   const addPassword = (storedPassword, userID, webAddress, desc) => {
     var index = [],
       i;
@@ -121,6 +144,9 @@ function App() {
     }
   };
 
+  //makes request to API to get passwords stored by user inside password wallet
+  //input userID and master password for validation
+  //output object with all the passwords stored by this user
   const getPasswordsFromDB = () => {
     Axios.post("http://localhost:3001/getPasswords", {
       userID: userID,
@@ -133,6 +159,7 @@ function App() {
     });
   };
 
+  //function gets stored passwords form DB at the moment of login
   useEffect(() => {
     setChangePasswordState("");
     setAddPasswordMessage("");
@@ -141,9 +168,14 @@ function App() {
     }
   }, [loggedInState, userID, password]);
 
+  //reverts decryption of passwords displayed to user, handles onClick
   function refreshPasswords() {
     setPasswordList(passwordListBefore);
   }
+
+  //handles changing master password via user interface
+  //input user ID, master password (for validation), new password, flag if new password should be encrypted via HMAC or SHA algorytm
+  //output returns response into user view (via state)
   const changePassword = () => {
     Axios.post("http://localhost:3001/changePassword", {
       userID: userID,
@@ -158,45 +190,37 @@ function App() {
       else setChangePasswordState(response.data.response);
     });
   };
-  const Logout = () => {
-    setLoginPage(true);
-    setRegisterPage(false);
-    setLoggedInPage(false);
-    setErrorMessage("");
-  };
 
-  const goToRegister = () => {
-    setLoginPage(false);
-    setRegisterPage(true);
-    setLoggedInPage(false);
-    setErrorMessage("");
-  };
-
+  //changes page that user see to be login page
   const goToLogin = () => {
     setLoginPage(true);
     setRegisterPage(false);
     setLoggedInPage(false);
     setErrorMessage("");
   };
+  //changes page that user see to be register page
+  const goToRegister = () => {
+    setLoginPage(false);
+    setRegisterPage(true);
+    setLoggedInPage(false);
+    setErrorMessage("");
+  };
+  //changes page that user see to be user panel
   const AUTH = () => {
     setLoginPage(false);
     setRegisterPage(false);
     setLoggedInPage(true);
     setErrorMessage("");
   };
-
+  //handles change of checkbox input
   const handleChange = (e) => {
-    setErrorMessage("");
-    if (e.target.value) setIsHashedNew("isHashed");
-    else setIsHashedNew(null);
-  };
-  const handleChangeREG = (e) => {
     setErrorMessage("");
     if (e.target.value) setIsHashedNew("isHashed");
     else setIsHashedNew(null);
   };
 
   //login
+  //TODO if possible split this monstrosity into smaller parts XD
   if (loginPage === true)
     return (
       <div className="App" id="register">
@@ -260,7 +284,7 @@ function App() {
               name="isHashed"
               value="isHashed"
               onChange={(e) => {
-                handleChangeREG({
+                handleChange({
                   target: {
                     name: e.target.name,
                     value: e.target.checked,
@@ -456,7 +480,7 @@ function App() {
         </div>
         <br />
         <div className="Content" id="logout">
-          <button onClick={() => Logout()}>Wyloguj</button>
+          <button onClick={() => goToLogin()}>Wyloguj</button>
         </div>
       </div>
     );

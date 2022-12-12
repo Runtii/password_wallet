@@ -100,6 +100,10 @@ const insertNewUser = (username, hash, salt, isPasswordHashed, callback) => {
   );
 };
 
+//Inserts new login attempt into DB
+//input ID of user account that somebody tried to access, IP address of someone that tried to access account,
+//date and time of attempt parsed by another function, status of attempt (success or failure) and callback function (only for testing purposes)
+//outputs callback message for testing purposes
 const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
   db.query(
     "INSERT INTO loginattempts (IDUser, IP, DateTime, Status) VALUES (?,?,?,?)",
@@ -110,6 +114,7 @@ const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
     }
   );
 };
+
 module.exports = {
   addPassword,
   updateUser,
