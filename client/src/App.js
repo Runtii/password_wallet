@@ -19,10 +19,19 @@ function App() {
   const [passwordListBefore, setPasswordListBefore] = useState([]);
   const [passwordList, setPasswordList] = useState([]);
 
+  const [loginList, setLoginList] = useState([
+    {
+      IP: "192.164.10.11",
+      DATETIME: "12.12.2022, 12:22:12",
+      STATUS: "Nieudane logowanie",
+    },
+  ]);
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [passwordToChange, setPasswordToChange] = useState("");
   const [isHashedNew, setIsHashedNew] = useState(null);
   const [changePasswordState, setChangePasswordState] = useState("");
+  const [addPasswordMessage, setAddPasswordMessage] = useState("");
 
   const [ErrorMessage, setErrorMessage] = useState("");
 
@@ -67,27 +76,68 @@ function App() {
       );
     });
   };
-
+  const deleteFromDB = (ID) => {};
+  const deletePasswordDB = (ID) => {};
   const addPassword = (storedPassword, userID, webAddress, desc) => {
-    Axios.post("http://localhost:3001/addpassword", {
-      password: storedPassword,
+    var index = [],
+      i;
+    for (i = 0; i < passwordList.length; i++) {
+      if (passwordList[i].web_address === webAddress) index.push(i);
+    }
+
+    let isTheSame = false;
+    if (index !== undefined) {
+      Axios.post("http://localhost:3001/encrypt", {
+        password: storedPassword,
+      }).then((response) => {
+        for (i = 0; i < passwordList.length; i++) {
+          if (
+            response.data.encrypted === passwordList[i].password ||
+            passwordList[i].password === storedPassword
+          ) {
+            isTheSame = true;
+            break;
+          }
+        }
+
+        if (storedPassword === "" || webAddress === "") {
+          setAddPasswordMessage("Puste dane strony lub hasła");
+        } else if (isTheSame === true) {
+          setAddPasswordMessage("Hasło już istnieje w bazie danych");
+        } else {
+          Axios.post("http://localhost:3001/addPassword", {
+            password: storedPassword,
+            userID: userID,
+            webAddress: webAddress,
+            desc: desc,
+          }).then((response) => {
+            if (response.data.response === "PASSWORD ADDED")
+              setAddPasswordMessage("Pomyślnie dodano hasło");
+            else setAddPasswordMessage("Wystąpił błąd podczas dodawania hasła");
+          });
+        }
+        getPasswordsFromDB();
+      });
+    }
+  };
+
+  const getPasswordsFromDB = () => {
+    Axios.post("http://localhost:3001/getPasswords", {
       userID: userID,
-      webAddress: webAddress,
-      desc: desc,
+      password: password,
+    }).then((response) => {
+      if (response.data !== "Error") {
+        setPasswordList(response.data);
+        setPasswordListBefore(response.data);
+      }
     });
   };
 
   useEffect(() => {
+    setChangePasswordState("");
+    setAddPasswordMessage("");
     if (loggedInState === true) {
-      Axios.post("http://localhost:3001/getpasswords", {
-        userID: userID,
-        password: password,
-      }).then((response) => {
-        if (response.data !== "Error") {
-          setPasswordList(response.data);
-          setPasswordListBefore(response.data);
-        }
-      });
+      getPasswordsFromDB();
     }
   }, [loggedInState, userID, password]);
 
@@ -101,37 +151,47 @@ function App() {
       passwordToChange: passwordToChange,
       isHashedNew: isHashedNew,
     }).then((response) => {
-      setChangePasswordState(response.data.response);
+      if (response.data.response === "VALIDATION ERROR")
+        setChangePasswordState("Złe hasło");
+      else if (response.data.response === "PASSWORD CHANGED")
+        setChangePasswordState("Hasło zostało zmienione");
+      else setChangePasswordState(response.data.response);
     });
   };
   const Logout = () => {
     setLoginPage(true);
     setRegisterPage(false);
     setLoggedInPage(false);
+    setErrorMessage("");
   };
 
   const goToRegister = () => {
     setLoginPage(false);
     setRegisterPage(true);
     setLoggedInPage(false);
+    setErrorMessage("");
   };
 
   const goToLogin = () => {
     setLoginPage(true);
     setRegisterPage(false);
     setLoggedInPage(false);
+    setErrorMessage("");
   };
   const AUTH = () => {
     setLoginPage(false);
     setRegisterPage(false);
     setLoggedInPage(true);
+    setErrorMessage("");
   };
 
   const handleChange = (e) => {
+    setErrorMessage("");
     if (e.target.value) setIsHashedNew("isHashed");
     else setIsHashedNew(null);
   };
   const handleChangeREG = (e) => {
+    setErrorMessage("");
     if (e.target.value) setIsHashedNew("isHashed");
     else setIsHashedNew(null);
   };
@@ -139,7 +199,7 @@ function App() {
   //login
   if (loginPage === true)
     return (
-      <div className="App">
+      <div className="App" id="register">
         <div className="Content">
           <h1>Logowanie</h1>
           <input
@@ -147,6 +207,7 @@ function App() {
             className="login"
             placeholder="Login"
             onChange={(event) => {
+              setErrorMessage("");
               setUsername(event.target.value);
             }}
           />
@@ -156,6 +217,7 @@ function App() {
             className="password"
             placeholder="Hasło"
             onChange={(event) => {
+              setErrorMessage("");
               setPassword(event.target.value);
             }}
           />
@@ -171,7 +233,7 @@ function App() {
   //register
   else if (registerPage === true)
     return (
-      <div className="App">
+      <div className="App" id="login">
         <div className="Content">
           <h1>Tworzenie konta</h1>
           <input
@@ -212,7 +274,8 @@ function App() {
           </div>
 
           <button onClick={register}>Zarejestruj</button>
-          <button onClick={goToLogin}> Przejdź do strony logowania</button>
+          <div className="ERRORBOX">{ErrorMessage}</div>
+          <button onClick={goToLogin}>Przejdź do strony logowania</button>
         </div>
       </div>
     );
@@ -221,11 +284,14 @@ function App() {
     return (
       <div className="App">
         <div className="Content">
+          <h2>Dodaj nowe hasło</h2>
           <input
+            on
             type="text"
             className="newPassword"
             placeholder="Hasło"
             onChange={(event) => {
+              setAddPasswordMessage("");
               setStoredPassword(event.target.value);
             }}
           />
@@ -234,6 +300,7 @@ function App() {
             className="adres"
             placeholder="Adres strony"
             onChange={(event) => {
+              setAddPasswordMessage("");
               setAddress(event.target.value);
             }}
           />
@@ -242,6 +309,7 @@ function App() {
             className="description"
             placeholder="Opis"
             onChange={(event) => {
+              setAddPasswordMessage("");
               setDesc(event.target.value);
             }}
           />
@@ -252,15 +320,19 @@ function App() {
           >
             Dodaj
           </button>
+          <div className="ERRORBOX">{addPasswordMessage}</div>
         </div>
         <br></br>
+
         <div className="Content">
+          <h2>Zachowane Hasła do stron</h2>
           <table>
             <thead>
               <tr>
                 <th>Strona</th>
                 <th>Hasło</th>
                 <th>Opis</th>
+                <th>Usuń</th>
               </tr>
             </thead>
             <tbody>
@@ -281,33 +353,78 @@ function App() {
                       {val.password}
                     </td>
                     <td>{val.description ? val.description : "Brak danych"}</td>
+                    <th>
+                      <button id="usunHaslo" onClick={deletePasswordDB(val.ID)}>
+                        Usuń
+                      </button>
+                    </th>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-
           <button onClick={() => refreshPasswords()}>
             Przywróć szyfrowanie
           </button>
         </div>
+        <br></br>
+        <div className="Content">
+          <h2>Dane logowań</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>IP</th>
+                <th>Czas próby</th>
+                <th>Status</th>
+                <th>Usuń</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loginList.map((val, key) => {
+                return (
+                  <tr key={key}>
+                    <td>{val.IP}</td>
+                    <td>{val.DATETIME}</td>
+                    <td>{val.STATUS}</td>
+                    <th>
+                      <button id="usun" onClick={deleteFromDB(val.ID)}>
+                        Usuń
+                      </button>
+                    </th>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
         <br />
         <div className="Content">
+          <h2>Zmień hasło</h2>
           <input
             type="text"
             id="currentPassword"
             name="currentPassword"
             placeholder="Aktualne hasło"
             onChange={(event) => {
+              setChangePasswordState("");
               setCurrentPassword(event.target.value);
             }}
           ></input>
+          <label
+            for="changePassword"
+            id="changePasswordLabel"
+            name="changePasswordLabe"
+            className="ERRORBOX"
+          >
+            {changePasswordState}
+          </label>
           <input
             type="text"
             id="newPassword"
             name="newPassword"
             placeholder="Nowe hasło"
             onChange={(event) => {
+              setChangePasswordState("");
               setPasswordToChange(event.target.value);
             }}
           ></input>
@@ -318,6 +435,7 @@ function App() {
               name="isHashed"
               value="isHashed"
               onChange={(e) => {
+                setChangePasswordState("");
                 handleChange({
                   target: {
                     name: e.target.name,
@@ -326,6 +444,7 @@ function App() {
                 });
               }}
             />
+
             <label htmlFor="isHashed">
               Czy hasło ma być z solą w formie sha512?
             </label>
@@ -334,16 +453,9 @@ function App() {
           <button onClick={() => changePassword()} name="changePassword">
             Zmień hasło
           </button>
-          <label
-            for="changePassword"
-            id="changePasswordLabel"
-            name="changePasswordLabe"
-          >
-            {changePasswordState}
-          </label>
         </div>
         <br />
-        <div className="Content">
+        <div className="Content" id="logout">
           <button onClick={() => Logout()}>Wyloguj</button>
         </div>
       </div>

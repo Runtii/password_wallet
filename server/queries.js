@@ -100,6 +100,16 @@ const insertNewUser = (username, hash, salt, isPasswordHashed, callback) => {
   );
 };
 
+const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
+  db.query(
+    "INSERT INTO loginattempts (IDUser, IP, DateTime, Status) VALUES (?,?,?,?)",
+    [ID, ipAddress, DateTime, status],
+    (err, result) => {
+      if (err) return callback({ response: "ERROR" });
+      else return callback({ response: "SUCCESS" });
+    }
+  );
+};
 module.exports = {
   addPassword,
   updateUser,
@@ -107,4 +117,5 @@ module.exports = {
   getUserCredentialsByID,
   getUserCredentialsByUsername,
   insertNewUser,
+  insertNewLoginAttempt,
 };
