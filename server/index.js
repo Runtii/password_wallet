@@ -16,6 +16,8 @@ const {
   setUserTimeoutDB,
   checkUserTimeoutDB,
   removePermBan,
+  deleteLoginAttempt,
+  deletePassword,
 } = require("./queries");
 
 //import all functions for encryption, decryption and validation
@@ -58,6 +60,23 @@ app.post("/addPassword", (req, res) => {
       }
     );
   }
+});
+
+app.post("/deletePassword", (req, res) => {
+  const { username, password, IDPassword } = req.body;
+
+  getUserCredentialsByUsername(username, function (credentials) {
+    const validation = validatePassword(
+      password,
+      credentials[0].password,
+      credentials[0].salt
+    );
+    if (validation) {
+      deletePassword(IDPassword, function (callback) {
+        res.send(callback);
+      });
+    } else res.send({ response: "ERROR" });
+  });
 });
 
 //gets passwords from DB saved by user, first it validates user then returns passwords
@@ -179,22 +198,22 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   const ipAddress = req.socket.remoteAddress;
   const { username, password } = req.body;
+
   getUserCredentialsByUsername(username, function (credentials) {
     let status = "";
     if (credentials[0] === undefined) res.send({ response: "Podano złe dane" });
     else {
-      UserTimeout(credentials[0].ID, function (TimeoutResult) {
-        console.log(TimeoutResult);
-        const isTimeout = TimeoutResult.isTimeout;
+      const validation = validatePassword(
+        password,
+        credentials[0].password,
+        credentials[0].salt
+      );
+      UserTimeout(credentials[0].ID, validation, function (TimeoutResult) {
+        let isTimeout = false;
+        isTimeout = TimeoutResult.isTimeout;
         const Timeout = TimeoutResult.Timeout;
-        if (isTimeout === false) {
-          if (
-            validatePassword(
-              password,
-              credentials[0].password,
-              credentials[0].salt
-            )
-          ) {
+        if (isTimeout == false) {
+          if (validation) {
             status = "Pomyślne logowanie";
             res.send({ response: "AUTH", ID: credentials[0].ID });
           } else {
@@ -209,8 +228,18 @@ app.post("/login", (req, res) => {
             function (callback) {}
           );
         } else {
+          status = "Nieudana próba logowania";
+          saveAttempt(
+            credentials[0].ID,
+            ipAddress,
+            getDateTime(),
+            status,
+            function (callback) {}
+          );
           res.send({
-            response: "Masz zablokowaną możliwość logowania do " + Timeout,
+            response:
+              "Złe dane!\n Masz zablokowaną możliwość logowania do " +
+              getDateTime(Timeout),
           });
         }
       });
@@ -226,49 +255,75 @@ const saveAttempt = (ID, ipAddress, DateTime, status, callbackATT) => {
   });
 };
 
+app.post("/deleteAttempt", (req, res) => {
+  const { username, password, IDAttempt } = req.body;
+
+  getUserCredentialsByUsername(username, function (credentials) {
+    const validation = validatePassword(
+      password,
+      credentials[0].password,
+      credentials[0].salt
+    );
+    if (validation) {
+      deleteLoginAttempt(IDAttempt, function (callback) {
+        res.send(callback);
+      });
+    } else res.send({ response: "ERROR" });
+  });
+});
+
 const setUserTimeout = (IDUser, ERRORS) => {
   let Timeout = new Date(getDateTime());
   let isTimeout = false;
+
   switch (ERRORS) {
     case 0:
-    case 1:
       break;
-    case 2:
+    case 1:
       Timeout.setSeconds(Timeout.getSeconds() + 5);
       setUserTimeoutDB(IDUser, Timeout, function (callback) {});
+
+      isTimeout = true;
+      break;
+    case 2:
+      Timeout.setSeconds(Timeout.getSeconds() + 10);
+      setUserTimeoutDB(IDUser, Timeout, function (callback) {});
+
       isTimeout = true;
       break;
     case 3:
-      Timeout.setSeconds(Timeout.getSeconds() + 10);
-      setUserTimeoutDB(IDUser, Timeout, function (callback) {});
-      isTimeout = true;
-      break;
-    case 4:
       Timeout.setSeconds(Timeout.getSeconds() + 120);
       setUserTimeoutDB(IDUser, Timeout, function (callback) {});
       isTimeout = true;
+
       break;
-    case 5:
+
+    case 4:
       Timeout = "9999-12-31 23:59:59";
       setUserTimeoutDB(IDUser, Timeout, function (callback) {});
       isTimeout = true;
+
       break;
+
     default:
       break;
   }
   return { isTimeout: isTimeout, Timeout: Timeout };
 };
 
-const UserTimeout = (IDUser, userCallback) => {
-  getLoginAttempts(IDUser, 5, function (callback) {
+const UserTimeout = (IDUser, validation, userCallback) => {
+  getLoginAttempts(IDUser, 4, function (callback) {
     const currentDateTime = getDateTime();
     checkUserTimeoutDB(IDUser, function (Timeout) {
       if (new Date(currentDateTime) < new Date(Timeout))
         return userCallback({ isTimeout: true, Timeout: Timeout });
+
       let ERRORS = 0;
-      if (Timeout === undefined)
+
+      if (Timeout === undefined) {
         setUserTimeoutDB(IDUser, currentDateTime, function (callback) {});
-      else {
+        return userCallback({ isTimeout: false, Timeout: currentDateTime });
+      } else {
         for (e in callback) {
           if (callback[e].Status === "Nieudana próba logowania") {
             ERRORS += 1;
@@ -277,36 +332,32 @@ const UserTimeout = (IDUser, userCallback) => {
           }
         }
       }
-      return userCallback(setUserTimeout(IDUser, ERRORS));
+
+      if (new Date(currentDateTime) >= new Date(Timeout) && validation)
+        return userCallback({ isTimeout: false, Timeout: currentDateTime });
+      else return userCallback(setUserTimeout(IDUser, ERRORS));
     });
   });
 };
 
 //returns formatted date and time
-const getDateTime = () => {
-  let currentDate = new Date();
+const getDateTime = (DATE) => {
+  let date = new Date();
+  if (DATE) date = new Date(DATE);
   return (
-    currentDate.getFullYear() +
+    date.getFullYear() +
     "-" +
-    (currentDate.getMonth() + 1 < 10
-      ? "0" + (currentDate.getMonth() + 1)
-      : currentDate.getMonth() + 1) +
+    (date.getMonth() + 1 < 10
+      ? "0" + (date.getMonth() + 1)
+      : date.getMonth() + 1) +
     "-" +
-    (currentDate.getDate() < 10
-      ? "0" + currentDate.getDate()
-      : currentDate.getDate()) +
+    (date.getDate() < 10 ? "0" + date.getDate() : date.getDate()) +
     " " +
-    (currentDate.getHours() < 10
-      ? "0" + currentDate.getHours()
-      : currentDate.getHours()) +
+    (date.getHours() < 10 ? "0" + date.getHours() : date.getHours()) +
     ":" +
-    (currentDate.getMinutes() < 10
-      ? "0" + currentDate.getMinutes()
-      : currentDate.getMinutes()) +
+    (date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes()) +
     ":" +
-    (currentDate.getSeconds() < 10
-      ? "0" + currentDate.getSeconds()
-      : currentDate.getSeconds())
+    (date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds())
   );
 };
 

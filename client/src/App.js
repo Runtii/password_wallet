@@ -68,6 +68,7 @@ function App() {
       password: password,
       isHashed: isHashed,
     });
+    goToLogin();
   };
 
   //sends request to API to handle decryption of password that was asked to decrypt by user inside user panel
@@ -96,12 +97,34 @@ function App() {
   //function handles requests to API to delete instance of login attempt
   //input ID of login attempt that user wants to delete
   //outputs response message and eventual error
-  const deleteFromDB = (IDOfLoginAttempt) => {};
+  const deleteLoginAttempt = (IDOfLoginAttempt) => {
+    Axios.post("http://localhost:3001/deleteAttempt", {
+      username: username,
+      password: password,
+      IDAttempt: IDOfLoginAttempt,
+    }).then((response) => {
+      if (response.data.response === "SUCCESS") {
+        setErrorMessage(response);
+        getLoginAttemptsFromDB();
+      }
+    });
+  };
 
   //function handles requests to API to delete instance of password stored inside password wallet
   //input ID of password that user wants to delete
   //outputs response message and eventual error
-  const deletePasswordDB = (IDOfPassword) => {};
+  const deletePassword = (IDOfPassword) => {
+    Axios.post("http://localhost:3001/deletePassword", {
+      username: username,
+      password: password,
+      IDPassword: IDOfPassword,
+    }).then((response) => {
+      if (response.data.response === "SUCCESS") {
+        setErrorMessage(response);
+        getPasswordsFromDB();
+      }
+    });
+  };
 
   //function handles request to add new password to be stored inside password wallet
   //right now it is also checking if password already exist
@@ -121,8 +144,9 @@ function App() {
       }).then((response) => {
         for (i = 0; i < passwordList.length; i++) {
           if (
-            response.data.encrypted === passwordList[i].password ||
-            passwordList[i].password === storedPassword
+            (response.data.encrypted === passwordList[i].password ||
+              passwordList[i].password === storedPassword) &&
+            passwordList[i].web_address === webAddress
           ) {
             isTheSame = true;
             break;
@@ -164,6 +188,7 @@ function App() {
       }
     });
   };
+
   const getLoginAttemptsFromDB = () => {
     Axios.post("http://localhost:3001/getLoginAttempts", {
       userID: userID,
@@ -396,7 +421,10 @@ function App() {
                     </td>
                     <td>{val.description ? val.description : "Brak danych"}</td>
                     <th>
-                      <button id="usunHaslo" onClick={deletePasswordDB(val.ID)}>
+                      <button
+                        id="usunHaslo"
+                        onClick={() => deletePassword(val.ID)}
+                      >
                         Usuń
                       </button>
                     </th>
@@ -429,7 +457,10 @@ function App() {
                     <td>{val.DateTime}</td>
                     <td>{val.Status}</td>
                     <th>
-                      <button id="usun" onClick={deleteFromDB(val.ID)}>
+                      <button
+                        id="usun"
+                        onClick={() => deleteLoginAttempt(val.idAttempt)}
+                      >
                         Usuń
                       </button>
                     </th>

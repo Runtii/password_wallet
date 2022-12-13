@@ -21,7 +21,17 @@ const addPassword = (hashedPassword, userID, webAddress, desc, callback) => {
     }
   );
 };
+const deletePassword = (IDPassword, callback) => {
+  db.query(
+    "DELETE FROM password WHERE (ID = ?)",
 
+    [IDPassword],
+    (err, res) => {
+      if (err) return callback({ response: "ERROR" });
+      else return callback({ response: "SUCCESS" });
+    }
+  );
+};
 //query to get passwords that was saved by user
 //input user id and callback function
 //returns object with passwords or object with message about failure
@@ -118,7 +128,17 @@ const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
     }
   );
 };
+const deleteLoginAttempt = (IDAttempt, callback) => {
+  db.query(
+    "DELETE FROM loginattempts WHERE (idAttempt = ?)",
 
+    [IDAttempt],
+    (err, res) => {
+      if (err) return callback({ response: "ERROR" });
+      else return callback({ response: "SUCCESS" });
+    }
+  );
+};
 //returns object with all login attempts that user made
 //input ID user and callback function
 //returns object or error message
@@ -172,4 +192,6 @@ module.exports = {
   setUserTimeoutDB,
   checkUserTimeoutDB,
   removePermBan,
+  deleteLoginAttempt,
+  deletePassword,
 };

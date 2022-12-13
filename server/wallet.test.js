@@ -139,20 +139,21 @@ describe("API tests", () => {
     username: "admin",
     password: "tak",
   };
-  // test("Testing timeout", async () => {
-  //   await request(baseURL).post("/login").send(goodPassword);
-  //   const resultNONE = checkUserTimeout(116);
-  //   expect(resultNONE).toBe(0);
-  //   await request(baseURL).post("/login").send(goodPassword);
-  //   await request(baseURL).post("/login").send(badPassword);
-  //   const result5 = checkUserTimeout(116);
-  //   expect(result5).toBe(5);
-  // });
+  test("Testing timeout", async () => {
+    await request(baseURL).post("/login").send(goodPassword);
+    await request(baseURL).post("/login").send(badPassword);
+    await request(baseURL).post("/login").send(badPassword);
+    queries.checkUserTimeoutDB(116, function (result) {
+      Timeout = new Date(API.getDateTime());
+      Timeout.setSeconds(Timeout.getSeconds() + 5);
+      expect(result).toStrictEqual(Timeout);
+    });
+  });
 });
 
 //testing queries
 describe("Queries tests", () => {
-  test("should return object with all login attempts", async () => {
+  test("should return object with all login attempts of admin account", async () => {
     await queries.getLoginAttempts(
       116,
       9999,
