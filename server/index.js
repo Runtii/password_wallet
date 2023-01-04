@@ -280,6 +280,15 @@ app.post("/deleteAttempt", (req, res) => {
   });
 });
 
+/**
+ * function that sets user timeout and checks if user is timeouted and returns that information
+ *
+ * input
+ * @param {*} IDUser - user ID that need to be timeouted
+ * @param {*} ERRORS - number of previous attempts that were incorrect
+ *
+ * @returns boolean isTimeout that states if user should be timeouted or not and Timeout dateTime that specifies when timeout expires
+ */
 const setUserTimeout = (IDUser, ERRORS) => {
   let Timeout = new Date(getDateTime());
   let isTimeout = false;
@@ -319,6 +328,15 @@ const setUserTimeout = (IDUser, ERRORS) => {
   return { isTimeout: isTimeout, Timeout: Timeout };
 };
 
+/**
+ * calculates number of wrong login attempts and sends request to DB to set timeout in DB
+ *
+ * @param {*} IDUser - ID of user that is processed
+ * @param {*} validation - flag if user was given acces or not
+ * @param {*} userCallback - callback function
+ *
+ * @forvards response given by DB query
+ */
 const UserTimeout = (IDUser, validation, userCallback) => {
   getLoginAttempts(IDUser, 4, function (callback) {
     const currentDateTime = getDateTime();
