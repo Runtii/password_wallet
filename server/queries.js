@@ -21,6 +21,17 @@ const addPassword = (hashedPassword, userID, webAddress, desc, callback) => {
     }
   );
 };
+
+/**
+ * querry to delete password from database
+ *
+ * inputs
+ * @param {*} IDPassword - id of password to be deleted
+ * @param {*} callback - function to get data form db.querry
+ *
+ * returns callback response as object
+ */
+
 const deletePassword = (IDPassword, callback) => {
   db.query(
     "DELETE FROM password WHERE (ID = ?)",
@@ -32,6 +43,7 @@ const deletePassword = (IDPassword, callback) => {
     }
   );
 };
+
 //query to get passwords that was saved by user
 //input user id and callback function
 //returns object with passwords or object with message about failure
@@ -128,6 +140,15 @@ const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
     }
   );
 };
+/**
+ * querry for login attempt deletion from DB
+ *
+ * input
+ * @param {*} IDAttempt - ID of login attempt to be deleted
+ * @param {*} callback - callback function
+ *
+ * returns callback message as object
+ */
 const deleteLoginAttempt = (IDAttempt, callback) => {
   db.query(
     "DELETE FROM loginattempts WHERE (idAttempt = ?)",
@@ -152,6 +173,17 @@ const getLoginAttempts = (ID, numberOfAttempts, callback) => {
     }
   );
 };
+
+/**
+ * querry to set users timeout
+ *
+ * inputs
+ * @param {*} IDUser - id of user to set timeout
+ * @param {*} Timeout - dateTime of end of timeout
+ * @param {*} callback - callback function
+ *
+ * returns callback response as object
+ */
 const setUserTimeoutDB = (IDUser, Timeout, callback) => {
   db.query(
     "Update users SET timeout = ? where ID = ?",
@@ -162,6 +194,16 @@ const setUserTimeoutDB = (IDUser, Timeout, callback) => {
     }
   );
 };
+
+/**
+ * querry used to get users timeout
+ *
+ * inputs
+ * @param {*} IDUser - ID of user to get it's timeout
+ * @param {*} callback - callback function
+ *
+ * returns callback response as object
+ */
 const checkUserTimeoutDB = (IDUser, callback) => {
   db.query("Select timeout FROM users where ID = ?", [IDUser], (err, res) => {
     if (err) {
@@ -170,16 +212,7 @@ const checkUserTimeoutDB = (IDUser, callback) => {
     return callback(res[0].timeout);
   });
 };
-const removePermBan = (IDUser, ActualDateTime, callback) => {
-  db.query(
-    "Update users SET timeout = ? where ID = ?",
-    [ActualDateTime, IDUser],
-    (err, res) => {
-      if (err) return callback({ response: "ERROR" });
-      else return callback({ response: "SUCCESS" });
-    }
-  );
-};
+
 module.exports = {
   addPassword,
   updateUser,
@@ -191,7 +224,6 @@ module.exports = {
   getLoginAttempts,
   setUserTimeoutDB,
   checkUserTimeoutDB,
-  removePermBan,
   deleteLoginAttempt,
   deletePassword,
 };

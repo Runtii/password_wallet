@@ -15,7 +15,6 @@ const {
   getLoginAttempts,
   setUserTimeoutDB,
   checkUserTimeoutDB,
-  removePermBan,
   deleteLoginAttempt,
   deletePassword,
 } = require("./queries");
@@ -255,6 +254,15 @@ const saveAttempt = (ID, ipAddress, DateTime, status, callbackATT) => {
   });
 };
 
+/**
+ * endnode for daleting login attempt
+ *
+ * inputs
+ * @param username,
+ * @param password
+ * @param IDAttempt
+ *
+ */
 app.post("/deleteAttempt", (req, res) => {
   const { username, password, IDAttempt } = req.body;
 
