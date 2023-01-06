@@ -17,6 +17,7 @@ const {
   checkUserTimeoutDB,
   deleteLoginAttempt,
   deletePassword,
+  sharePassword,
 } = require("./queries");
 
 //import all functions for encryption, decryption and validation
@@ -60,11 +61,20 @@ app.post("/addPassword", (req, res) => {
     );
   }
 });
+/**
+ * Endnode for deletion of stored password by user
+ *
+ * input
+ * userID - id of user that tries to delete stored password
+ * password - master password for validation
+ * IDPassword - id of password to be deleted
+ *
+ * returns callback from DB or error message when validation didn't pass
+ */
+app.post("/deleteStoredPassword", (req, res) => {
+  const { userID, password, IDPassword } = req.body;
 
-app.post("/deletePassword", (req, res) => {
-  const { username, password, IDPassword } = req.body;
-
-  getUserCredentialsByUsername(username, function (credentials) {
+  getUserCredentialsByID(userID, (credentials) => {
     const validation = validatePassword(
       password,
       credentials[0].password,
@@ -77,7 +87,28 @@ app.post("/deletePassword", (req, res) => {
     } else res.send({ response: "ERROR" });
   });
 });
-
+app.post("/shareStoredPassword", (req, res) => {
+  const { userID, password, IDPassword, usernameToShare } = req.body;
+  getUserCredentialsByID(userID, (credentials) => {
+    const validation = validatePassword(
+      password,
+      credentials[0].password,
+      credentials[0].salt
+    );
+    getUserCredentialsByUsername(usernameToShare, (userToShareCredentials) => {
+      if (validation) {
+        sharePassword(
+          userID,
+          IDPassword,
+          userToShareCredentials[0].ID,
+          function (callback) {
+            res.send(callback);
+          }
+        );
+      } else res.send({ response: "ERROR" });
+    });
+  });
+});
 //gets passwords from DB saved by user, first it validates user then returns passwords
 //input user id and user master password for validation
 //returns object with response as string message
@@ -93,7 +124,17 @@ app.post("/getPasswords", (req, res) => {
     else res.send({ response: "ERROR" });
   });
 });
-
+/**
+ * EndNode to get login attempts from DB
+ *
+ * input
+ * userID - id of user that tries to get login attempts
+ * numberOfAttempts - user can specify how many attempts should be sent (future function)
+ * password - master password for validation
+ *
+ * return
+ * forwards response from DB or error if validation didn't pass
+ */
 app.post("/getLoginAttempts", (req, res) => {
   const { userID, numberOfAttempts, password } = req.body;
   getUserCredentialsByID(userID, function (credentials) {

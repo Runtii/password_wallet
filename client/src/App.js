@@ -22,6 +22,7 @@ function App() {
       web_address: "BRAK DANYCH",
       storedPassword: "BRAK DANYCH",
       description: "BRAK DANYCH",
+      shared: "NIEUDOSTĘPNIONE",
     },
   ]);
 
@@ -41,6 +42,7 @@ function App() {
 
   const [ErrorMessage, setErrorMessage] = useState("");
 
+  const [sharePasswordState, setSharePasswordState] = useState("");
   //makes request to log in user
   //sends username and master password given by user
   //after receiving "AUTH" response gives access to user panel with ID given by API
@@ -110,22 +112,6 @@ function App() {
     });
   };
 
-  //function handles requests to API to delete instance of password stored inside password wallet
-  //input ID of password that user wants to delete
-  //outputs response message and eventual error
-  const deletePassword = (IDOfPassword) => {
-    Axios.post("http://localhost:3001/deletePassword", {
-      username: username,
-      password: password,
-      IDPassword: IDOfPassword,
-    }).then((response) => {
-      if (response.data.response === "SUCCESS") {
-        setErrorMessage(response);
-        getPasswordsFromDB();
-      }
-    });
-  };
-
   //function handles request to add new password to be stored inside password wallet
   //right now it is also checking if password already exist
   //at the end of execution it also refreshes password list to display new password
@@ -173,7 +159,36 @@ function App() {
       });
     }
   };
+  //function handles requests to API to delete instance of password stored inside password wallet
+  //input ID of password that user wants to delete
+  //outputs response message and eventual error
+  const deletePassword = (IDPassword) => {
+    Axios.post("http://localhost:3001/deleteStoredPassword", {
+      userID: userID,
+      password: password,
+      IDPassword: IDPassword,
+    }).then((response) => {
+      if (response.data.response === "SUCCESS") {
+        setErrorMessage(response);
+        getPasswordsFromDB();
+      }
+    });
+  };
 
+  const sharePassword = (IDPassword, usernameToShare) => {
+    Axios.post("http://localhost:3001/shareStoredPassword", {
+      userID: userID,
+      password: password,
+      IDPassword: IDPassword,
+      usernameToShare: usernameToShare,
+    }).then((response) => {
+      if (response.data.response === "VALIDATION ERROR")
+        setSharePasswordState("ERROR");
+      else if (response.data.response === "PASSWORD SHARED")
+        setSharePasswordState("Hasło zostało udostępnione");
+      else setSharePasswordState(response.data.response);
+    });
+  };
   //makes request to API to get passwords stored by user inside password wallet
   //input userID and master password for validation
   //output object with all the passwords stored by this user
@@ -399,7 +414,9 @@ function App() {
                 <th>Strona</th>
                 <th>Hasło</th>
                 <th>Opis</th>
+                <th>Stan Udostępnienia</th>
                 <th>Usuń</th>
+                <th>Udostępnij</th>
               </tr>
             </thead>
             <tbody>
@@ -408,6 +425,7 @@ function App() {
                   <tr key={key}>
                     <td>{val.web_address}</td>
                     <td
+                      id="hasloZachowaneWBD"
                       onClick={() => {
                         decrypt({
                           ID: val.ID,
@@ -420,12 +438,21 @@ function App() {
                       {val.password}
                     </td>
                     <td>{val.description ? val.description : "Brak danych"}</td>
+                    <td>{val.shared ? val.shared : "NIEUDOSTĘPNIONE"}</td>
                     <th>
                       <button
                         id="usunHaslo"
                         onClick={() => deletePassword(val.ID)}
                       >
                         Usuń
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        id="udostępnijHaslo"
+                        onClick={() => sharePassword(val.ID, "Admin1")}
+                      >
+                        Udostępnij
                       </button>
                     </th>
                   </tr>
@@ -458,7 +485,7 @@ function App() {
                     <td>{val.Status}</td>
                     <th>
                       <button
-                        id="usun"
+                        id="usunProbeLogowania"
                         onClick={() => deleteLoginAttempt(val.idAttempt)}
                       >
                         Usuń

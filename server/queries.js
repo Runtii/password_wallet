@@ -31,7 +31,6 @@ const addPassword = (hashedPassword, userID, webAddress, desc, callback) => {
  *
  * returns callback response as object
  */
-
 const deletePassword = (IDPassword, callback) => {
   db.query(
     "DELETE FROM password WHERE (ID = ?)",
@@ -40,6 +39,43 @@ const deletePassword = (IDPassword, callback) => {
     (err, res) => {
       if (err) return callback({ response: "ERROR" });
       else return callback({ response: "SUCCESS" });
+    }
+  );
+};
+
+const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
+  console.log(
+    "userID",
+    userID,
+    "IDPassword",
+    IDPassword,
+    "userIDToShare",
+    userIDToShare
+  );
+  db.query(
+    "SELECT sharedTo FROM password WHERE (ID = ?)",
+    [IDPassword],
+    (err, res) => {
+      if (res[0].sharedTo === null || res[0].sharedTo === undefined) {
+        sharedList = [];
+        sharedList.push(userIDToShare);
+        sharedList = JSON.stringify(sharedList);
+        console.log(sharedList);
+        db.query(
+          "Update password SET sharedTo = ? where ID = ?",
+          [sharedList, IDPassword],
+          (err, res) => {}
+        );
+      } else {
+        sharedList = JSON.parse(res[0].sharedTo);
+        for (i in sharedList) {
+          if (sharedList[i] === userIDToShare) {
+            console.log(i, "FOUND");
+            return callback({ response: "ALREADY SHARED" });
+          }
+        }
+        console.log(sharedList);
+      }
     }
   );
 };
@@ -140,6 +176,7 @@ const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
     }
   );
 };
+
 /**
  * querry for login attempt deletion from DB
  *
@@ -160,6 +197,7 @@ const deleteLoginAttempt = (IDAttempt, callback) => {
     }
   );
 };
+
 //returns object with all login attempts that user made
 //input ID user and callback function
 //returns object or error message
@@ -226,4 +264,5 @@ module.exports = {
   checkUserTimeoutDB,
   deleteLoginAttempt,
   deletePassword,
+  sharePassword,
 };

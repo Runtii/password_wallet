@@ -22,7 +22,7 @@
   justify-content: center;
   align-items: center;
   background-color: rgb(7, 197, 99);
-  width: 50%;
+  width: 60%;
   height: auto;
   border-radius: 10px;
   margin-top: 20px;
@@ -48,15 +48,17 @@ input {
   height: 100px;
 }
 
-button {
+button,
+#hasloZachowaneWBD {
   cursor: pointer;
 }
 
-#usun,
-#usunHaslo {
+#usunProbeLogowania,
+#usunHaslo,
+#udostępnijHaslo {
   width: 80%;
   text-align: center;
-  padding: 0px;
+  padding: 5px;
 }
 .hash {
   display: flex;
