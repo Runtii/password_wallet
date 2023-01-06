@@ -1,7 +1,7 @@
 import "./App.css";
 import { useState, useEffect } from "react";
 import Axios from "axios";
-
+var Buffer = require("buffer/").Buffer;
 function App() {
   const [loginPage, setLoginPage] = useState(true);
   const [registerPage, setRegisterPage] = useState(false);
@@ -43,6 +43,7 @@ function App() {
   const [ErrorMessage, setErrorMessage] = useState("");
 
   const [sharePasswordState, setSharePasswordState] = useState("");
+  const [usernameToShare, setUsernameToShare] = useState("");
   //makes request to log in user
   //sends username and master password given by user
   //after receiving "AUTH" response gives access to user panel with ID given by API
@@ -174,7 +175,15 @@ function App() {
       }
     });
   };
-
+  /**
+   * makes request to backend to share password with another user
+   *
+   * inputs
+   * @param {*} IDPassword - password ID to be shared
+   * @param {*} usernameToShare - username that password will be shared to
+   * also sends @param userID and @param password for validation purposes
+   *
+   */
   const sharePassword = (IDPassword, usernameToShare) => {
     Axios.post("http://localhost:3001/shareStoredPassword", {
       userID: userID,
@@ -186,6 +195,10 @@ function App() {
         setSharePasswordState("ERROR");
       else if (response.data.response === "PASSWORD SHARED")
         setSharePasswordState("Hasło zostało udostępnione");
+      else if (response.data.response === "ALREADY SHARED")
+        setSharePasswordState(
+          "Hasło jest już udostępnione danemu użytkownikowi"
+        );
       else setSharePasswordState(response.data.response);
     });
   };
@@ -422,40 +435,70 @@ function App() {
             <tbody>
               {passwordList.map((val, key) => {
                 return (
-                  <tr key={key}>
-                    <td>{val.web_address}</td>
-                    <td
-                      id="hasloZachowaneWBD"
-                      onClick={() => {
-                        decrypt({
-                          ID: val.ID,
-                          web_address: val.web_address,
-                          storedPassword: val.password,
-                          description: val.description,
-                        });
-                      }}
-                    >
-                      {val.password}
-                    </td>
-                    <td>{val.description ? val.description : "Brak danych"}</td>
-                    <td>{val.shared ? val.shared : "NIEUDOSTĘPNIONE"}</td>
-                    <th>
-                      <button
-                        id="usunHaslo"
-                        onClick={() => deletePassword(val.ID)}
+                  <>
+                    <tr key={key}>
+                      <td>{val.web_address}</td>
+                      <td
+                        id="hasloZachowaneWBD"
+                        onClick={() => {
+                          decrypt({
+                            ID: val.ID,
+                            web_address: val.web_address,
+                            storedPassword: val.password,
+                            description: val.description,
+                          });
+                        }}
                       >
-                        Usuń
-                      </button>
-                    </th>
-                    <th>
-                      <button
-                        id="udostępnijHaslo"
-                        onClick={() => sharePassword(val.ID, "Admin1")}
-                      >
-                        Udostępnij
-                      </button>
-                    </th>
-                  </tr>
+                        {val.password}
+                      </td>
+                      <td>
+                        {val.description ? val.description : "Brak danych"}
+                      </td>
+                      <td>{val.sharedTo ? val.sharedTo : "NIEUDOSTĘPNIONE"}</td>
+                      <th>
+                        <button
+                          id="usunHaslo"
+                          onClick={() => deletePassword(val.ID)}
+                        >
+                          Usuń
+                        </button>
+                      </th>
+                      <th>
+                        <button
+                          id="udostępnijHaslo"
+                          onClick={() => sharePassword(val.ID, "Admin2")}
+                        >
+                          Udostępnij
+                        </button>
+                      </th>
+                    </tr>
+                    <tr style={{ display: "none" }} key={key}>
+                      <input
+                        type="text"
+                        id={val.ID}
+                        className="UsernameToShare"
+                        name="usernameToShare"
+                        placeholder="Nazwa użytkownika do udostępnienia"
+                        onChange={(event) => {
+                          setUsernameToShare(event.target.value);
+                        }}
+                      ></input>
+
+                      <th>
+                        <button
+                          id="udostępnijHaslo"
+                          onClick={() =>
+                            sharePassword(
+                              val.ID,
+                              document.getElementById(val.ID)[0].value
+                            )
+                          }
+                        >
+                          Udostępnij
+                        </button>
+                      </th>
+                    </tr>
+                  </>
                 );
               })}
             </tbody>

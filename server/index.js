@@ -18,6 +18,7 @@ const {
   deleteLoginAttempt,
   deletePassword,
   sharePassword,
+  getOwnerID,
 } = require("./queries");
 
 //import all functions for encryption, decryption and validation
@@ -43,7 +44,21 @@ const validatePassword = (password, hash, salt) => {
     return validateHMAC(password, hash);
   }
 };
-
+/**
+ * validates ownership of password
+ *
+ * inputs
+ * @param {*} IDUser - userID that needs to be checked
+ * @param {*} IDPassword - ID password
+ *
+ * @returns boolean flag that states state of validation
+ */
+const validateOwnership = (IDUser, IDPassword, callback) => {
+  getOwnerID(IDPassword, (IDInDB) => {
+    if (IDUser === IDInDB[0].id_user) return callback(true);
+    else return callback(false);
+  });
+};
 //adds password to DB (via function with db query inside)
 //request input: new password, id of the user, web address of the given password, optional description
 //returns result of operation (object with message)
@@ -87,6 +102,18 @@ app.post("/deleteStoredPassword", (req, res) => {
     } else res.send({ response: "ERROR" });
   });
 });
+
+/**
+ * validation before sharing password
+ *
+ * inputs
+ * @param userID - userID that owns password
+ * @param password - master password of owner
+ * @param IDPassword - password ID
+ * @param usernameToShare - username that password will be shared
+ *
+ * @forwards response message from DB
+ */
 app.post("/shareStoredPassword", (req, res) => {
   const { userID, password, IDPassword, usernameToShare } = req.body;
   getUserCredentialsByID(userID, (credentials) => {
@@ -95,21 +122,27 @@ app.post("/shareStoredPassword", (req, res) => {
       credentials[0].password,
       credentials[0].salt
     );
-    getUserCredentialsByUsername(usernameToShare, (userToShareCredentials) => {
-      if (validation) {
-        sharePassword(
-          userID,
-          IDPassword,
-          userToShareCredentials[0].ID,
-          function (callback) {
-            res.send(callback);
-          }
-        );
-      } else res.send({ response: "ERROR" });
+    validateOwnership(userID, IDPassword, (ownerValidation) => {
+      getUserCredentialsByUsername(
+        usernameToShare,
+        (userToShareCredentials) => {
+          if (validation || ownerValidation) {
+            sharePassword(
+              userID,
+              IDPassword,
+              userToShareCredentials[0].ID,
+              function (callback) {
+                res.send(callback);
+              }
+            );
+          } else res.send({ response: "ERROR" });
+        }
+      );
     });
   });
 });
-//gets passwords from DB saved by user, first it validates user then returns passwords
+//gets passwords from DB saved by user, first it validates user then returns passwords it
+//also parses value of field sharedTo because of errors on doing it on client side
 //input user id and user master password for validation
 //returns object with response as string message
 app.post("/getPasswords", (req, res) => {
@@ -119,6 +152,18 @@ app.post("/getPasswords", (req, res) => {
       validatePassword(password, credentials[0].password, credentials[0].salt)
     )
       getPasswords(userID, function (resultOfGetPassword) {
+        var temp = "";
+        for (i in resultOfGetPassword) {
+          resultOfGetPassword[i].sharedTo = JSON.parse(
+            resultOfGetPassword[i].sharedTo
+          );
+          for (j in resultOfGetPassword[i].sharedTo) {
+            temp += resultOfGetPassword[i].sharedTo[j] + ", ";
+          }
+          resultOfGetPassword[i].sharedTo = temp;
+          temp = "";
+        }
+
         res.send(resultOfGetPassword);
       });
     else res.send({ response: "ERROR" });

@@ -8,6 +8,19 @@ const db = mysql.createConnection({
   database: "passwordwallet",
 });
 
+const getOwnerID = (IDPassword, callback) => {
+  db.query(
+    "SELECT id_user FROM password where (ID = ?)",
+    [IDPassword],
+    (err, res) => {
+      if (err) {
+        return callback({ response: "ERROR" });
+      } else {
+        callback(res);
+      }
+    }
+  );
+};
 //query to add password to database
 //input hashed password, user id, web address, optional description and callback function
 //returns object with response if password was added as callback function
@@ -42,16 +55,18 @@ const deletePassword = (IDPassword, callback) => {
     }
   );
 };
-
+/**
+ * makes request to set shared password users
+ *
+ * input
+ * @param userID - userID that owns password
+ * @param password - master password of owner
+ * @param IDPassword - password ID
+ * @param usernameToShare - username that password will be shared
+ *
+ * @returns response message
+ */
 const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
-  console.log(
-    "userID",
-    userID,
-    "IDPassword",
-    IDPassword,
-    "userIDToShare",
-    userIDToShare
-  );
   db.query(
     "SELECT sharedTo FROM password WHERE (ID = ?)",
     [IDPassword],
@@ -60,7 +75,6 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
         sharedList = [];
         sharedList.push(userIDToShare);
         sharedList = JSON.stringify(sharedList);
-        console.log(sharedList);
         db.query(
           "Update password SET sharedTo = ? where ID = ?",
           [sharedList, IDPassword],
@@ -69,12 +83,17 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
       } else {
         sharedList = JSON.parse(res[0].sharedTo);
         for (i in sharedList) {
-          if (sharedList[i] === userIDToShare) {
-            console.log(i, "FOUND");
+          if (sharedList[i] === userIDToShare || sharedList[i] === userID) {
             return callback({ response: "ALREADY SHARED" });
           }
         }
-        console.log(sharedList);
+        sharedList.push(userIDToShare);
+        sharedList = JSON.stringify(sharedList);
+        db.query(
+          "Update password SET sharedTo = ? where ID = ?",
+          [sharedList, IDPassword],
+          (err, res) => {}
+        );
       }
     }
   );
@@ -265,4 +284,5 @@ module.exports = {
   deleteLoginAttempt,
   deletePassword,
   sharePassword,
+  getOwnerID,
 };
