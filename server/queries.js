@@ -92,7 +92,11 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
         db.query(
           "Update password SET sharedTo = ? where ID = ?",
           [sharedList, IDPassword],
-          (err, res) => {}
+          (err, res) => {
+            if (err) {
+              return callback({ response: "ERROR" });
+            } else return callback({ response: "SUCCESS" });
+          }
         );
       }
     }

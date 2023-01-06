@@ -1,7 +1,7 @@
 import "./App.css";
 import { useState, useEffect } from "react";
 import Axios from "axios";
-var Buffer = require("buffer/").Buffer;
+
 function App() {
   const [loginPage, setLoginPage] = useState(true);
   const [registerPage, setRegisterPage] = useState(false);
@@ -16,7 +16,12 @@ function App() {
   const [desc, setDesc] = useState("");
   const [webAddress, setAddress] = useState("");
 
-  const [passwordListBefore, setPasswordListBefore] = useState([]);
+  const [passwordListBefore, setPasswordListBefore] = useState({
+    web_address: "BRAK DANYCH",
+    storedPassword: "BRAK DANYCH",
+    description: "BRAK DANYCH",
+    shared: "NIEUDOSTĘPNIONE",
+  });
   const [passwordList, setPasswordList] = useState([
     {
       web_address: "BRAK DANYCH",
@@ -185,22 +190,31 @@ function App() {
    *
    */
   const sharePassword = (IDPassword, usernameToShare) => {
+    console.log(IDPassword, usernameToShare);
     Axios.post("http://localhost:3001/shareStoredPassword", {
       userID: userID,
       password: password,
       IDPassword: IDPassword,
       usernameToShare: usernameToShare,
     }).then((response) => {
+      console.log(response.data.response);
       if (response.data.response === "VALIDATION ERROR")
         setSharePasswordState("ERROR");
-      else if (response.data.response === "PASSWORD SHARED")
+      else if (response.data.response === "SUCCESS") {
         setSharePasswordState("Hasło zostało udostępnione");
-      else if (response.data.response === "ALREADY SHARED")
+        getPasswordsFromDB();
+      } else if (response.data.response === "ALREADY SHARED")
         setSharePasswordState(
           "Hasło jest już udostępnione danemu użytkownikowi"
         );
       else setSharePasswordState(response.data.response);
     });
+  };
+
+  const setVisibility = (ID) => {
+    if (document.getElementById("share" + ID).style.display === "table-row")
+      document.getElementById("share" + ID).style.display = "none";
+    else document.getElementById("share" + ID).style.display = "table-row";
   };
   //makes request to API to get passwords stored by user inside password wallet
   //input userID and master password for validation
@@ -455,25 +469,39 @@ function App() {
                         {val.description ? val.description : "Brak danych"}
                       </td>
                       <td>{val.sharedTo ? val.sharedTo : "NIEUDOSTĘPNIONE"}</td>
-                      <th>
+                      <td>
                         <button
                           id="usunHaslo"
                           onClick={() => deletePassword(val.ID)}
                         >
                           Usuń
                         </button>
-                      </th>
-                      <th>
+                      </td>
+                      <td>
                         <button
-                          id="udostępnijHaslo"
-                          onClick={() => sharePassword(val.ID, "Admin2")}
+                          className="udostępnijHaslo"
+                          onClick={() => setVisibility(val.ID)}
                         >
                           Udostępnij
                         </button>
-                      </th>
+                      </td>
                     </tr>
-                    <tr style={{ display: "none" }} key={key}>
+
+                    <tr
+                      id={"share" + val.ID}
+                      style={{
+                        display: "none",
+                        marginLeft: "auto",
+                        marginRight: "auto",
+                      }}
+                    >
+                      <th></th>
+
                       <input
+                        style={{
+                          paddingLeft: "auto",
+                          paddingRight: "auto",
+                        }}
                         type="text"
                         id={val.ID}
                         className="UsernameToShare"
@@ -484,19 +512,19 @@ function App() {
                         }}
                       ></input>
 
-                      <th>
-                        <button
-                          id="udostępnijHaslo"
-                          onClick={() =>
-                            sharePassword(
-                              val.ID,
-                              document.getElementById(val.ID)[0].value
-                            )
-                          }
-                        >
-                          Udostępnij
-                        </button>
-                      </th>
+                      <button
+                        className="sharePassword"
+                        onClick={() =>
+                          sharePassword(
+                            val.ID,
+                            document.getElementById(val.ID).value
+                          )
+                        }
+                      >
+                        Udostępnij
+                      </button>
+                      <th></th>
+                      <th></th>
                     </tr>
                   </>
                 );

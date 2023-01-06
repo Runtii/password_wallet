@@ -116,6 +116,7 @@ app.post("/deleteStoredPassword", (req, res) => {
  */
 app.post("/shareStoredPassword", (req, res) => {
   const { userID, password, IDPassword, usernameToShare } = req.body;
+  console.log(userID, password, IDPassword, usernameToShare);
   getUserCredentialsByID(userID, (credentials) => {
     const validation = validatePassword(
       password,
@@ -126,7 +127,12 @@ app.post("/shareStoredPassword", (req, res) => {
       getUserCredentialsByUsername(
         usernameToShare,
         (userToShareCredentials) => {
-          if (validation || ownerValidation) {
+          if (
+            validation &&
+            ownerValidation &&
+            userToShareCredentials[0] !== null &&
+            userToShareCredentials[0] !== undefined
+          ) {
             sharePassword(
               userID,
               IDPassword,

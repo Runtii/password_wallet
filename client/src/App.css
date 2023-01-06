@@ -52,10 +52,13 @@ button,
 #hasloZachowaneWBD {
   cursor: pointer;
 }
-
+.UsernameToShare,
+button.sharePassword {
+  width: 80%;
+}
 #usunProbeLogowania,
 #usunHaslo,
-#udostępnijHaslo {
+button.udostępnijHaslo {
   width: 80%;
   text-align: center;
   padding: 5px;
