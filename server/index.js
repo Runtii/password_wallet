@@ -95,11 +95,19 @@ app.post("/deleteStoredPassword", (req, res) => {
       credentials[0].password,
       credentials[0].salt
     );
-    if (validation) {
+    if (!validation) res.send({ response: "NOT VALIDATED" });
+
+    validateOwnership(userID, IDPassword, (ownerValidation) => {
+      if (!ownerValidation) {
+        res.send({ response: "NOT OWNER" });
+        return 0;
+      }
+
       deletePassword(IDPassword, function (callback) {
         res.send(callback);
+        return 0;
       });
-    } else res.send({ response: "ERROR" });
+    });
   });
 });
 
@@ -116,7 +124,6 @@ app.post("/deleteStoredPassword", (req, res) => {
  */
 app.post("/shareStoredPassword", (req, res) => {
   const { userID, password, IDPassword, usernameToShare } = req.body;
-  console.log(userID, password, IDPassword, usernameToShare);
   getUserCredentialsByID(userID, (credentials) => {
     const validation = validatePassword(
       password,
@@ -128,21 +135,42 @@ app.post("/shareStoredPassword", (req, res) => {
       getUserCredentialsByUsername(
         usernameToShare,
         (userToShareCredentials) => {
-          if (!validation) res.send({ response: "NOT LOGGED IN" });
-          if (!ownerValidation) res.send({ response: "NOT AN OWNER" });
           if (
-            userToShareCredentials[0] !== null &&
-            userToShareCredentials[0] !== undefined
+            userToShareCredentials[0] === null ||
+            userToShareCredentials[0] === undefined
           ) {
-            sharePassword(
-              userID,
-              IDPassword,
-              userToShareCredentials[0].ID,
-              function (callback) {
-                res.send(callback);
-              }
-            );
-          } else res.send({ response: "WRONG USERNAME" });
+            res.send({ response: "WRONG USERNAME" });
+            return 0;
+          }
+          console.log(
+            userID,
+            password,
+            IDPassword,
+            usernameToShare,
+            userToShareCredentials[0].ID
+          );
+          if (!ownerValidation) {
+            res.send({ response: "NOT AN OWNER" });
+            return 0;
+          }
+          if (userID === userToShareCredentials[0].ID) {
+            res.send({ response: "YOU ARE OWNER" });
+            return 0;
+          }
+          if (!validation) {
+            res.send({ response: "NOT LOGGED IN" });
+            return 0;
+          }
+
+          sharePassword(
+            userID,
+            IDPassword,
+            userToShareCredentials[0].ID,
+            function (callback) {
+              res.send(callback);
+              return 0;
+            }
+          );
         }
       );
     });

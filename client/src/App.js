@@ -198,6 +198,11 @@ function App() {
       password: password,
       IDPassword: IDPassword,
     }).then((response) => {
+      if (response.data.response === "NOT OWNER") {
+        setVisibility("ERRORBOXMESSAGEFIELD" + IDPassword);
+        document.getElementById("ERRORBOXMESSAGE" + IDPassword).innerHTML =
+          "Tylko właściciel może usunąć hasło";
+      }
       if (response.data.response === "SUCCESS") {
         setErrorMessage(response);
         getPasswordsFromDB();
@@ -215,31 +220,44 @@ function App() {
    *
    */
   const sharePassword = (IDPassword, usernameToShare) => {
-    console.log(IDPassword, usernameToShare);
     Axios.post("http://localhost:3001/shareStoredPassword", {
       userID: userID,
       password: password,
       IDPassword: IDPassword,
       usernameToShare: usernameToShare,
     }).then((response) => {
-      console.log(response.data.response);
       if (response.data.response === "VALIDATION ERROR")
-        setSharePasswordState("ERROR");
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          "ERROR LOGOWANIA";
       else if (response.data.response === "SUCCESS") {
-        setSharePasswordState("Hasło zostało udostępnione");
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          "Hasło zostało udostępnione pomyślnie";
         getPasswordsFromDB();
       } else if (response.data.response === "ALREADY SHARED")
-        setSharePasswordState(
-          "Hasło jest już udostępnione danemu użytkownikowi"
-        );
-      else setSharePasswordState(response.data.response);
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          "Hasło jest już udostępnione";
+      else if (response.data.response === "WRONG USERNAME")
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          "Zła nazwa użytkownika";
+      else if (response.data.response === "NOT AN OWNER")
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          "Tylko właściciel hasła może je udostępniać";
+      else if (response.data.response === "YOU ARE OWNER")
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          "Jesteś właścicielem tego hasła";
+      else
+        document.getElementById("ERROR" + IDPassword).innerHTML =
+          response.data.response;
     });
   };
-
+  /**
+   * function that changes visibility of share component by ID of it
+   * @param {*} ID - ID of component to change visibility
+   */
   const setVisibility = (ID) => {
-    if (document.getElementById("share" + ID).style.display === "table-row")
-      document.getElementById("share" + ID).style.display = "none";
-    else document.getElementById("share" + ID).style.display = "table-row";
+    if (document.getElementById(ID).style.display === "table-row")
+      document.getElementById(ID).style.display = "none";
+    else document.getElementById(ID).style.display = "table-row";
   };
   //makes request to API to get passwords stored by user inside password wallet
   //input userID and master password for validation
@@ -500,14 +518,32 @@ function App() {
                       <td>
                         <button
                           className="udostępnijHaslo"
-                          onClick={() => setVisibility(val.ID)}
+                          onClick={() => setVisibility("share" + val.ID)}
                         >
                           Udostępnij
                         </button>
                       </td>
                     </tr>
-
                     <tr
+                      style={{
+                        display: "none",
+                        marginLeft: "auto",
+                        marginRight: "auto",
+                      }}
+                      id={"ERRORBOXMESSAGEFIELD" + val.ID}
+                      onClick={() => {
+                        setVisibility("ERRORBOXMESSAGEFIELD" + val.ID);
+                      }}
+                    >
+                      <th className="ERRORBOXMESSAGEFIELD"></th>
+                      <th className="ERRORBOXMESSAGEFIELD"></th>
+                      <th
+                        className="ERRORBOXMESSAGE"
+                        id={"ERRORBOXMESSAGE" + val.ID}
+                      ></th>
+                    </tr>
+                    <tr
+                      className="sharePasswordBOX"
                       id={"share" + val.ID}
                       style={{
                         display: "none",
@@ -515,36 +551,38 @@ function App() {
                         marginRight: "auto",
                       }}
                     >
-                      <th></th>
+                      <th>Nazwa użytkownika do udostępnienia</th>
+                      <td>
+                        <input
+                          style={{
+                            paddingLeft: "auto",
+                            paddingRight: "auto",
+                          }}
+                          type="text"
+                          id={val.ID}
+                          className="UsernameToShare"
+                          name="usernameToShare"
+                          placeholder="Nazwa użytkownika do udostępnienia"
+                          onChange={(event) => {
+                            setUsernameToShare(event.target.value);
+                          }}
+                        ></input>
 
-                      <input
-                        style={{
-                          paddingLeft: "auto",
-                          paddingRight: "auto",
-                        }}
-                        type="text"
-                        id={val.ID}
-                        className="UsernameToShare"
-                        name="usernameToShare"
-                        placeholder="Nazwa użytkownika do udostępnienia"
-                        onChange={(event) => {
-                          setUsernameToShare(event.target.value);
-                        }}
-                      ></input>
+                        <button
+                          className="sharePassword"
+                          onClick={() =>
+                            sharePassword(
+                              val.ID,
+                              document.getElementById(val.ID).value
+                            )
+                          }
+                        >
+                          Udostępnij
+                        </button>
+                      </td>
 
-                      <button
-                        className="sharePassword"
-                        onClick={() =>
-                          sharePassword(
-                            val.ID,
-                            document.getElementById(val.ID).value
-                          )
-                        }
-                      >
-                        Udostępnij
-                      </button>
-                      <th></th>
-                      <th></th>
+                      <th>Status</th>
+                      <th className="ERRORBOXLOGGED" id={"ERROR" + val.ID}></th>
                     </tr>
                   </>
                 );

@@ -6,6 +6,7 @@ const db = mysql.createConnection({
   host: "localhost",
   password: "Password",
   database: "passwordwallet",
+  multipleStatements: true,
 });
 
 const getOwnerID = (IDPassword, callback) => {
@@ -14,7 +15,7 @@ const getOwnerID = (IDPassword, callback) => {
     [IDPassword],
     (err, res) => {
       if (err) {
-        return callback({ response: "ERROR" });
+        return callback({ response: "ERROR" + err });
       } else {
         callback(res);
       }
@@ -29,7 +30,7 @@ const addPassword = (hashedPassword, userID, webAddress, desc, callback) => {
     "INSERT INTO password (password,id_user,web_address,description) VALUES (?,?,?,?)",
     [hashedPassword, userID, webAddress, desc],
     (err, result) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback({ response: "PASSWORD ADDED" });
     }
   );
@@ -46,14 +47,63 @@ const addPassword = (hashedPassword, userID, webAddress, desc, callback) => {
  */
 const deletePassword = (IDPassword, callback) => {
   db.query(
-    "DELETE FROM password WHERE (ID = ?)",
-
+    "SELECT sharedTo FROM password WHERE (ID = ?)",
     [IDPassword],
     (err, res) => {
-      if (err) return callback({ response: "ERROR" });
-      else return callback({ response: "SUCCESS" });
+      sharedPasswords = JSON.parse(res[0].sharedTo);
+
+      db.query(
+        "SELECT sharedPasswords FROM users WHERE ID in (?)",
+        [sharedPasswords],
+        (err, resu) => {
+          var sharedList = [];
+          for (i in resu) {
+            temp = JSON.parse(resu[i].sharedPasswords);
+
+            for (j = 0; j < temp.length; j++) {
+              if (temp[j] === IDPassword) {
+                temp.splice(j, 1);
+                j = j - 1;
+              }
+            }
+
+            sharedList.push(temp);
+          }
+          let output = "";
+          for (i in sharedPasswords) {
+            if (i == sharedPasswords.length) {
+              output +=
+                "((" +
+                sharedPasswords[i].toString() +
+                "," +
+                sharedList[i].toString() +
+                "))";
+            } else {
+              output +=
+                "(" +
+                sharedPasswords[i].toString() +
+                ",(" +
+                sharedList[i].toString() +
+                ")),";
+            }
+          }
+
+          db.query(
+            "INSERT INTO users (ID,sharedPasswords) values (?) ON DUPLICATE KEY UPDATE sharedPasswords = VALUES(sharedPasswords)",
+            [output],
+            (err, res) => {
+              if (err) return callback({ response: "ERROR" + err });
+              else return callback({ response: "SUCCESS" });
+            }
+          );
+        }
+      );
     }
   );
+  db.query("DELETE FROM password WHERE (ID = ?)", [IDPassword], (err, res) => {
+    if (err) return callback({ response: "ERROR" + err });
+    else return callback({ response: "SUCCESS" });
+  });
 };
 /**
  * makes request to set shared password users
@@ -68,21 +118,74 @@ const deletePassword = (IDPassword, callback) => {
  */
 const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
   db.query(
+    "SELECT sharedPasswords FROM users WHERE (ID = ?)",
+    [userIDToShare],
+    (err, res) => {
+      if (
+        res[0].sharedPasswords === null ||
+        res[0].sharedPasswords === undefined
+      ) {
+        var sharedPasswords = [];
+        sharedPasswords.push(IDPassword);
+        sharedPasswords = JSON.stringify(sharedPasswords);
+        db.query(
+          "Update users SET sharedPasswords = ? where ID = ?",
+          [sharedPasswords, userIDToShare],
+          (err, res) => {
+            if (err) {
+              return callback(err);
+            }
+          }
+        );
+      } else {
+        sharedPasswords = JSON.parse(res[0].sharedPasswords);
+        for (i in sharedPasswords) {
+          if (sharedPasswords[i] === IDPassword) {
+            return callback({ response: "ALREADY SHARED" });
+          }
+        }
+
+        sharedPasswords.push(IDPassword);
+        sharedPasswords = JSON.stringify(sharedPasswords);
+        db.query(
+          "Update users SET sharedPasswords = ? where ID = ?",
+          [sharedPasswords, userIDToShare],
+          (err, res) => {
+            if (err) {
+              return callback(err);
+            }
+          }
+        );
+      }
+    }
+  );
+
+  db.query(
     "SELECT sharedTo FROM password WHERE (ID = ?)",
     [IDPassword],
     (err, res) => {
+      console.log(res, JSON.parse(res[0].sharedTo));
       if (res[0].sharedTo === null || res[0].sharedTo === undefined) {
-        sharedList = [];
+        var sharedList = [];
         sharedList.push(userIDToShare);
+        console.log(userIDToShare);
         sharedList = JSON.stringify(sharedList);
+        console.log(JSON.stringify(sharedList));
         db.query(
           "Update password SET sharedTo = ? where ID = ?",
           [sharedList, IDPassword],
-          (err, res) => {}
+          (err, res) => {
+            if (err) {
+              return callback(err);
+            } else {
+              return callback({ response: "SUCCESS" });
+            }
+          }
         );
       } else {
         sharedList = JSON.parse(res[0].sharedTo);
         for (i in sharedList) {
+          console.log(sharedList, sharedList[i]);
           if (sharedList[i] === userIDToShare || sharedList[i] === userID) {
             return callback({ response: "ALREADY SHARED" });
           }
@@ -103,18 +206,56 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
   );
 };
 
-//query to get passwords that was saved by user
-//input user id and callback function
-//returns object with passwords or object with message about failure
-const getPasswords = (userID, callback) => {
+const getPasswordsSUPP = (userID, callback) => {
   db.query(
     "SELECT * FROM password where id_user = ?",
     [userID],
     (err, result) => {
       if (err) {
-        return callback({ response: "ERROR" });
+        return callback({ response: "ERROR" + err });
       } else {
         return callback(result);
+      }
+    }
+  );
+};
+//query to get passwords that was saved by user
+//input user id and callback function
+//returns object with passwords or object with message about failure
+const getPasswords = (userID, callback) => {
+  db.query(
+    "SELECT sharedPasswords FROM users where ID = ?",
+    [userID],
+    (err, res) => {
+      if (err) return callback({ response: "ERROR" + err });
+      else {
+        if (
+          res[0].sharedPasswords != null &&
+          res[0].sharedPasswords != undefined
+        ) {
+          sharedPasswords = JSON.parse(res[0].sharedPasswords);
+
+          db.query(
+            "SELECT * FROM password where ID in (?)",
+            [sharedPasswords],
+            (err, resPasswords) => {
+              if (err) {
+                return callback({ response: "ERROR" + err });
+              } else {
+                getPasswordsSUPP(userID, (callbackSUPP) => {
+                  for (i in resPasswords) {
+                    callbackSUPP.push(resPasswords[i]);
+                  }
+                  return callback(callbackSUPP);
+                });
+              }
+            }
+          );
+        } else {
+          getPasswordsSUPP(userID, (callbackSUPP) => {
+            return callback(callbackSUPP);
+          });
+        }
       }
     }
   );
@@ -128,7 +269,7 @@ const updateUser = (encrypted, salt, isPasswordHashed, userID, callback) => {
     "Update users SET password = ?, salt = ? , isPasswordHashed = ? where ID = ?",
     [encrypted, salt, isPasswordHashed, userID],
     (err, result) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback({ response: "PASSWORD CHANGED" });
     }
   );
@@ -140,7 +281,7 @@ const updateUser = (encrypted, salt, isPasswordHashed, userID, callback) => {
 const getUserCredentialsByID = (userID, callback) => {
   db.query("SELECT * FROM users where ID = ?", [userID], (err, result) => {
     if (err) {
-      return callback({ response: "ERROR" });
+      return callback({ response: "ERROR" + err });
     } else {
       return callback(result);
     }
@@ -179,7 +320,7 @@ const insertNewUser = (
     "INSERT INTO users (username,password,salt,timeout,isPasswordHashed) VALUES (?,?,?,?,?)",
     [username, hash, salt, Date, isPasswordHashed],
     (err, result) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback({ response: "REGISTERED" });
     }
   );
@@ -194,7 +335,7 @@ const insertNewLoginAttempt = (ID, ipAddress, DateTime, status, callback) => {
     "INSERT INTO loginattempts (IDUser, IP, DateTime, Status) VALUES (?,?,?,?)",
     [ID, ipAddress, DateTime, status],
     (err, result) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback({ response: "SUCCESS" });
     }
   );
@@ -215,7 +356,7 @@ const deleteLoginAttempt = (IDAttempt, callback) => {
 
     [IDAttempt],
     (err, res) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback({ response: "SUCCESS" });
     }
   );
@@ -229,7 +370,7 @@ const getLoginAttempts = (ID, numberOfAttempts, callback) => {
     "SELECT * FROM  loginattempts WHERE IDUser = ? ORDER BY idAttempt DESC LIMIT ?",
     [ID, numberOfAttempts],
     (err, result) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback(result);
     }
   );
@@ -250,7 +391,7 @@ const setUserTimeoutDB = (IDUser, Timeout, callback) => {
     "Update users SET timeout = ? where ID = ?",
     [Timeout, IDUser],
     (err, res) => {
-      if (err) return callback({ response: "ERROR" });
+      if (err) return callback({ response: "ERROR" + err });
       else return callback({ response: "SUCCESS" });
     }
   );
@@ -268,7 +409,7 @@ const setUserTimeoutDB = (IDUser, Timeout, callback) => {
 const checkUserTimeoutDB = (IDUser, callback) => {
   db.query("Select timeout FROM users where ID = ?", [IDUser], (err, res) => {
     if (err) {
-      return callback({ response: "ERROR" });
+      return callback({ response: "ERROR" + err });
     }
     return callback(res[0].timeout);
   });
