@@ -123,13 +123,14 @@ app.post("/shareStoredPassword", (req, res) => {
       credentials[0].password,
       credentials[0].salt
     );
+
     validateOwnership(userID, IDPassword, (ownerValidation) => {
       getUserCredentialsByUsername(
         usernameToShare,
         (userToShareCredentials) => {
+          if (!validation) res.send({ response: "NOT LOGGED IN" });
+          if (!ownerValidation) res.send({ response: "NOT AN OWNER" });
           if (
-            validation &&
-            ownerValidation &&
             userToShareCredentials[0] !== null &&
             userToShareCredentials[0] !== undefined
           ) {
@@ -141,7 +142,7 @@ app.post("/shareStoredPassword", (req, res) => {
                 res.send(callback);
               }
             );
-          } else res.send({ response: "ERROR" });
+          } else res.send({ response: "WRONG USERNAME" });
         }
       );
     });
@@ -225,26 +226,28 @@ app.post("/changePassword", (req, res) => {
 
   getUserCredentialsByID(userID, function (credentials) {
     if (
-      validatePassword(
+      !validatePassword(
         currentPassword,
         credentials[0].password,
         credentials[0].salt
       )
     ) {
-      if (isHashedNew === "isHashed") {
-        result = encryptSHA(passwordToChange);
-        const encrypted = result.password;
-        const salt = result.salt;
-        updateUser(encrypted, salt, 1, userID, function (callback) {
-          res.send(callback);
-        });
-      } else {
-        const encrypted = encryptHMAC(passwordToChange);
-        updateUser(encrypted, null, null, userID, function (callback) {
-          res.send(callback);
-        });
-      }
-    } else res.send({ response: "VALIDATION ERROR" });
+      res.send({ response: "VALIDATION ERROR" });
+    }
+
+    if (isHashedNew === "isHashed") {
+      result = encryptSHA(passwordToChange);
+      const encrypted = result.password;
+      const salt = result.salt;
+      updateUser(encrypted, salt, 1, userID, function (callback) {
+        res.send(callback);
+      });
+    } else {
+      const encrypted = encryptHMAC(passwordToChange);
+      updateUser(encrypted, null, null, userID, function (callback) {
+        res.send(callback);
+      });
+    }
   });
 });
 
@@ -292,49 +295,47 @@ app.post("/login", (req, res) => {
 
   getUserCredentialsByUsername(username, function (credentials) {
     let status = "";
-    if (credentials[0] === undefined) res.send({ response: "Podano złe dane" });
-    else {
-      const validation = validatePassword(
-        password,
-        credentials[0].password,
-        credentials[0].salt
-      );
-      UserTimeout(credentials[0].ID, validation, function (TimeoutResult) {
-        let isTimeout = false;
-        isTimeout = TimeoutResult.isTimeout;
+    if (credentials[0] === undefined)
+      res.send({ response: "Podano złe dane!" });
+
+    const validation = validatePassword(
+      password,
+      credentials[0].password,
+      credentials[0].salt
+    );
+    UserTimeout(
+      credentials[0].ID,
+      validation,
+      ipAddress,
+      function (TimeoutResult) {
+        let isTimeout = TimeoutResult.isTimeout
+          ? TimeoutResult.isTimeout
+          : false;
         const Timeout = TimeoutResult.Timeout;
-        if (isTimeout == false) {
-          if (validation) {
-            status = "Pomyślne logowanie";
-            res.send({ response: "AUTH", ID: credentials[0].ID });
-          } else {
-            status = "Nieudana próba logowania";
-            res.send({ response: "Podano złe dane" });
-          }
-          saveAttempt(
-            credentials[0].ID,
-            ipAddress,
-            getDateTime(),
-            status,
-            function (callback) {}
-          );
-        } else {
-          status = "Nieudana próba logowania";
-          saveAttempt(
-            credentials[0].ID,
-            ipAddress,
-            getDateTime(),
-            status,
-            function (callback) {}
-          );
-          res.send({
-            response:
-              "Złe dane!\n Masz zablokowaną możliwość logowania do " +
-              getDateTime(Timeout),
-          });
+
+        let message = "Złe dane! Masz zablokowaną możliwość logowania do ";
+        if (isTimeout === true) {
+          res.send({ response: message + getDateTime(Timeout) });
+          isTimeout = false;
+          return 0;
         }
-      });
-    }
+
+        if (validation && isTimeout === false) {
+          status = "Pomyślne logowanie";
+          saveAttempt(
+            credentials[0].ID,
+            ipAddress,
+            getDateTime(),
+            status,
+            function (callback) {}
+          );
+          res.send({ response: "AUTH", ID: credentials[0].ID });
+          return 0;
+        } else {
+          res.send({ response: "Złe dane!" });
+        }
+      }
+    );
   });
 });
 
@@ -429,7 +430,7 @@ const setUserTimeout = (IDUser, ERRORS) => {
  *
  * @forvards response given by DB query
  */
-const UserTimeout = (IDUser, validation, userCallback) => {
+const UserTimeout = (IDUser, validation, ipAddress, userCallback) => {
   getLoginAttempts(IDUser, 4, function (callback) {
     const currentDateTime = getDateTime();
     checkUserTimeoutDB(IDUser, function (Timeout) {
@@ -453,7 +454,17 @@ const UserTimeout = (IDUser, validation, userCallback) => {
 
       if (new Date(currentDateTime) >= new Date(Timeout) && validation)
         return userCallback({ isTimeout: false, Timeout: currentDateTime });
-      else return userCallback(setUserTimeout(IDUser, ERRORS));
+      else if (new Date(currentDateTime) >= new Date(Timeout) && !validation) {
+        let status = "Nieudana próba logowania";
+        saveAttempt(
+          IDUser,
+          ipAddress,
+          getDateTime(),
+          status,
+          function (callback) {}
+        );
+        return userCallback(setUserTimeout(IDUser, ERRORS));
+      } else return userCallback(setUserTimeout(IDUser, ERRORS));
     });
   });
 };

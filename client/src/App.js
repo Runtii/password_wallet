@@ -79,6 +79,29 @@ function App() {
     goToLogin();
   };
 
+  /**
+   * Supportive function for decrypt that returns value to passwordList
+   *
+   * @param {*} password - password that will be displayed
+   * @param {*} ID - ID of password that is being changed
+   */
+  const changeValueInPassword = (password, ID) => {
+    setPasswordList(
+      passwordList.map((value) => {
+        if (password)
+          return value.ID === ID
+            ? {
+                ID: value.ID,
+                web_address: value.web_address,
+                password: password,
+                description: value.description,
+                sharedTo: value.sharedTo,
+              }
+            : value;
+      })
+    );
+  };
+
   //sends request to API to handle decryption of password that was asked to decrypt by user inside user panel
   //function handles decryption of passwords that user stores inside password wallet NOT master password
   //input hash of password to be decrypted
@@ -89,42 +112,16 @@ function App() {
         encryption.ID === val.ID &&
         encryption.storedPassword === val.password
       ) {
-        console.log("TAK", val.ID);
         Axios.post("http://localhost:3001/decrypt", {
           password: encryption.storedPassword,
         }).then((response) => {
-          setPasswordList(
-            passwordList.map((value) => {
-              return value.ID === encryption.ID
-                ? {
-                    ID: value.ID,
-                    web_address: value.web_address,
-                    password: response.data,
-                    description: value.description,
-                    sharedTo: value.sharedTo,
-                  }
-                : value;
-            })
-          );
+          changeValueInPassword(response.data, encryption.ID);
         });
       } else if (
         encryption.ID === val.ID &&
         encryption.storedPassword !== val.password
       ) {
-        console.log("NIE", encryption.storedPassword, val.password);
-        setPasswordList(
-          passwordList.map((value) => {
-            return value.ID === encryption.ID
-              ? {
-                  ID: val.ID,
-                  web_address: val.web_address,
-                  password: val.password,
-                  description: val.description,
-                  sharedTo: val.sharedTo,
-                }
-              : value;
-          })
-        );
+        changeValueInPassword(val.password, encryption.ID);
       }
     });
   };
@@ -207,6 +204,7 @@ function App() {
       }
     });
   };
+
   /**
    * makes request to backend to share password with another user
    *
@@ -469,10 +467,10 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {passwordList.map((val, key) => {
+              {passwordList.map((val, keyPassword) => {
                 return (
                   <>
-                    <tr key={key}>
+                    <tr key={keyPassword}>
                       <td>{val.web_address}</td>
                       <td
                         id="hasloZachowaneWBD"
@@ -567,9 +565,9 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {loginList.map((val, key) => {
+              {loginList.map((val, keyLogin) => {
                 return (
-                  <tr key={key}>
+                  <tr key={keyLogin}>
                     <td>{val.IP}</td>
                     <td>{val.DateTime}</td>
                     <td>{val.Status}</td>

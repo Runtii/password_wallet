@@ -94,7 +94,7 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
           [sharedList, IDPassword],
           (err, res) => {
             if (err) {
-              return callback({ response: "ERROR" });
+              return callback(err);
             } else return callback({ response: "SUCCESS" });
           }
         );
