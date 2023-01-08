@@ -84,21 +84,48 @@ function App() {
   //input hash of password to be decrypted
   //returns object with all the data same as earlier except from password which is decrypted
   const decrypt = (encryption) => {
-    Axios.post("http://localhost:3001/decrypt", {
-      password: encryption.storedPassword,
-    }).then((response) => {
-      setPasswordList(
-        passwordList.map((val) => {
-          return val.ID === encryption.ID
-            ? {
-                ID: val.ID,
-                web_address: val.web_address,
-                password: response.data,
-                description: val.description,
-              }
-            : val;
-        })
-      );
+    passwordListBefore.map((val) => {
+      if (
+        encryption.ID === val.ID &&
+        encryption.storedPassword === val.password
+      ) {
+        console.log("TAK", val.ID);
+        Axios.post("http://localhost:3001/decrypt", {
+          password: encryption.storedPassword,
+        }).then((response) => {
+          setPasswordList(
+            passwordList.map((value) => {
+              return value.ID === encryption.ID
+                ? {
+                    ID: value.ID,
+                    web_address: value.web_address,
+                    password: response.data,
+                    description: value.description,
+                    sharedTo: value.sharedTo,
+                  }
+                : value;
+            })
+          );
+        });
+      } else if (
+        encryption.ID === val.ID &&
+        encryption.storedPassword !== val.password
+      ) {
+        console.log("NIE", encryption.storedPassword, val.password);
+        setPasswordList(
+          passwordList.map((value) => {
+            return value.ID === encryption.ID
+              ? {
+                  ID: val.ID,
+                  web_address: val.web_address,
+                  password: val.password,
+                  description: val.description,
+                  sharedTo: val.sharedTo,
+                }
+              : value;
+          })
+        );
+      }
     });
   };
 
@@ -252,11 +279,6 @@ function App() {
       getLoginAttemptsFromDB();
     }
   }, [loggedInState, userID, password]);
-
-  //reverts decryption of passwords displayed to user, handles onClick
-  function refreshPasswords() {
-    setPasswordList(passwordListBefore);
-  }
 
   //handles changing master password via user interface
   //input user ID, master password (for validation), new password, flag if new password should be encrypted via HMAC or SHA algorytm
@@ -531,9 +553,6 @@ function App() {
               })}
             </tbody>
           </table>
-          <button onClick={() => refreshPasswords()}>
-            Przywróć szyfrowanie
-          </button>
         </div>
         <br></br>
         <div className="Content">
