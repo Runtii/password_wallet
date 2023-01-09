@@ -49,6 +49,9 @@ function App() {
 
   const [sharePasswordState, setSharePasswordState] = useState("");
   const [usernameToShare, setUsernameToShare] = useState("");
+
+  const [blockedPasswords, setBlockedPasswords] = useState(false);
+  const [blockedAttempts, setBlockedAttempts] = useState(false);
   //makes request to log in user
   //sends username and master password given by user
   //after receiving "AUTH" response gives access to user panel with ID given by API
@@ -259,6 +262,26 @@ function App() {
       document.getElementById(ID).style.display = "none";
     else document.getElementById(ID).style.display = "table-row";
   };
+
+  const blockPasswords = () => {
+    if (passwordList) {
+      passwordList.map((val, keyPassword) => {
+        document
+          .getElementById("usunHaslo" + val.ID)
+          .setAttribute("disabled", "");
+      });
+    }
+  };
+  const blockAttempts = () => {
+    if (loginList) {
+      loginList.map((val, keyLogin) => {
+        document
+          .getElementById("usunProbeLogowania" + val.idAttempt)
+          .setAttribute("disabled", "");
+      });
+    }
+  };
+
   //makes request to API to get passwords stored by user inside password wallet
   //input userID and master password for validation
   //output object with all the passwords stored by this user
@@ -280,12 +303,59 @@ function App() {
       numberOfAttempts: 10,
       password: password,
     }).then((response) => {
-      if (response.data !== "") {
-        setLoginList(response.data);
-      }
+      setLoginList(response.data);
     });
   };
 
+  const changeMode = () => {
+    let temp = true;
+    if (!passwordList) return 0;
+
+    if (
+      document.getElementById("usunHaslo" + passwordList[0].ID).disabled ===
+      true
+    ) {
+      temp = true;
+      document.getElementById("changeMode").innerHTML =
+        "Zmień na tryb podglądu";
+    } else {
+      temp = false;
+      document.getElementById("changeMode").innerHTML = "Zmień na tryb edycji";
+    }
+    passwordList.map((val, keyPassword) => {
+      if (temp)
+        document
+          .getElementById("usunHaslo" + val.ID)
+          .removeAttribute("disabled");
+      else
+        document
+          .getElementById("usunHaslo" + val.ID)
+          .setAttribute("disabled", "");
+    });
+    loginList.map((val, keyLogin) => {
+      if (temp)
+        document
+          .getElementById("usunProbeLogowania" + val.idAttempt)
+          .removeAttribute("disabled");
+      else
+        document
+          .getElementById("usunProbeLogowania" + val.idAttempt)
+          .setAttribute("disabled", "");
+    });
+  };
+
+  useEffect(() => {
+    if (!blockedAttempts && loggedInState) {
+      setBlockedAttempts(true);
+      blockAttempts();
+    }
+  }, [loginList]);
+  useEffect(() => {
+    if (!blockedPasswords && loggedInState) {
+      setBlockedPasswords(true);
+      blockPasswords();
+    }
+  }, [passwordList]);
   //function gets stored passwords form DB at the moment of login
   useEffect(() => {
     setChangePasswordState("");
@@ -508,12 +578,23 @@ function App() {
                       </td>
                       <td>{val.sharedTo ? val.sharedTo : "NIEUDOSTĘPNIONE"}</td>
                       <td>
-                        <button
-                          id="usunHaslo"
-                          onClick={() => deletePassword(val.ID)}
+                        <div
+                          onClick={() => {
+                            if (
+                              document.getElementById("usunHaslo" + val.ID)
+                                .disabled === true
+                            ) {
+                              window.confirm("Ten przycisk jest zablokowany");
+                            }
+                          }}
                         >
-                          Usuń
-                        </button>
+                          <button
+                            id={"usunHaslo" + val.ID}
+                            onClick={() => deletePassword(val.ID)}
+                          >
+                            Usuń
+                          </button>
+                        </div>
                       </td>
                       <td>
                         <button
@@ -589,6 +670,14 @@ function App() {
               })}
             </tbody>
           </table>
+          <button
+            id="changeMode"
+            onClick={() => {
+              changeMode();
+            }}
+          >
+            Zmień na tryb edycji
+          </button>
         </div>
         <br></br>
         <div className="Content">
@@ -610,12 +699,26 @@ function App() {
                     <td>{val.DateTime}</td>
                     <td>{val.Status}</td>
                     <th>
-                      <button
-                        id="usunProbeLogowania"
-                        onClick={() => deleteLoginAttempt(val.idAttempt)}
+                      <div
+                        onClick={() => {
+                          if (
+                            document.getElementById(
+                              "usunProbeLogowania" + val.idAttempt
+                            ).disabled === true
+                          ) {
+                            window.confirm("Ten przycisk jest zablokowany");
+                          }
+                        }}
                       >
-                        Usuń
-                      </button>
+                        <button
+                          id={"usunProbeLogowania" + val.idAttempt}
+                          onClick={() => {
+                            deleteLoginAttempt(val.idAttempt);
+                          }}
+                        >
+                          Usuń
+                        </button>
+                      </div>
                     </th>
                   </tr>
                 );
