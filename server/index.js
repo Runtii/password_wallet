@@ -55,6 +55,7 @@ const validatePassword = (password, hash, salt) => {
  */
 const validateOwnership = (IDUser, IDPassword, callback) => {
   getOwnerID(IDPassword, (IDInDB) => {
+    console.log(IDInDB);
     if (IDUser === IDInDB[0].id_user) return callback(true);
     else return callback(false);
   });
@@ -95,7 +96,10 @@ app.post("/deleteStoredPassword", (req, res) => {
       credentials[0].password,
       credentials[0].salt
     );
-    if (!validation) res.send({ response: "NOT VALIDATED" });
+    if (!validation) {
+      res.send({ response: "NOT VALIDATED" });
+      return 0;
+    }
 
     validateOwnership(userID, IDPassword, (ownerValidation) => {
       if (!ownerValidation) {

@@ -14,10 +14,11 @@ const getOwnerID = (IDPassword, callback) => {
     "SELECT id_user FROM password where (ID = ?)",
     [IDPassword],
     (err, res) => {
+      console.log(res, err);
       if (err) {
-        return callback({ response: "ERROR" + err });
+        return callback(err);
       } else {
-        callback(res);
+        return callback(res);
       }
     }
   );
@@ -50,8 +51,9 @@ const deletePassword = (IDPassword, callback) => {
     "SELECT sharedTo FROM password WHERE (ID = ?)",
     [IDPassword],
     (err, res) => {
+      if (err) console.log(err);
       sharedPasswords = JSON.parse(res[0].sharedTo);
-
+      console.log(sharedPasswords);
       db.query(
         "SELECT sharedPasswords FROM users WHERE ID in (?)",
         [sharedPasswords],
@@ -92,18 +94,23 @@ const deletePassword = (IDPassword, callback) => {
             "INSERT INTO users (ID,sharedPasswords) values (?) ON DUPLICATE KEY UPDATE sharedPasswords = VALUES(sharedPasswords)",
             [output],
             (err, res) => {
-              if (err) return callback({ response: "ERROR" + err });
-              else return callback({ response: "SUCCESS" });
+              if (err) console.log(err);
+              else {
+                db.query(
+                  "DELETE FROM password WHERE (ID = ?)",
+                  [IDPassword],
+                  (err, res) => {
+                    if (err) return callback({ response: "ERROR" + err });
+                    else return callback({ response: "SUCCESS" });
+                  }
+                );
+              }
             }
           );
         }
       );
     }
   );
-  db.query("DELETE FROM password WHERE (ID = ?)", [IDPassword], (err, res) => {
-    if (err) return callback({ response: "ERROR" + err });
-    else return callback({ response: "SUCCESS" });
-  });
 };
 /**
  * makes request to set shared password users
@@ -168,9 +175,8 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
       if (res[0].sharedTo === null || res[0].sharedTo === undefined) {
         var sharedList = [];
         sharedList.push(userIDToShare);
-        console.log(userIDToShare);
+
         sharedList = JSON.stringify(sharedList);
-        console.log(JSON.stringify(sharedList));
         db.query(
           "Update password SET sharedTo = ? where ID = ?",
           [sharedList, IDPassword],
@@ -185,7 +191,6 @@ const sharePassword = (userID, IDPassword, userIDToShare, callback) => {
       } else {
         sharedList = JSON.parse(res[0].sharedTo);
         for (i in sharedList) {
-          console.log(sharedList, sharedList[i]);
           if (sharedList[i] === userIDToShare || sharedList[i] === userID) {
             return callback({ response: "ALREADY SHARED" });
           }
